@@ -1,2 +1,4 @@
+from model.build_model import build_model
+
 if __name__ == '__main__':
-    print('beep')
+    model = build_model((1, 1))  # change this
