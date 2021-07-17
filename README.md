@@ -9,3 +9,4 @@ I am way too lazy to use a virtual environment, so here are the packages you nee
 - tensorflow (and keras if you want)
 - yahoofinancials
 - pandas
+- sklearn

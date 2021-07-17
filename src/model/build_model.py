@@ -1,6 +1,5 @@
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM
-import tensorflow as tf
 
 
 def build_model(input_shape):

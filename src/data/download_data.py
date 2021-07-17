@@ -9,7 +9,7 @@ csv_columns = ['date', 'high', 'low', 'open',
                'close', 'volume', 'adjclose', 'formatted_date']
 
 
-def download(codes: List[str], allFlag: bool = False):
+def download_data(codes: List[str], allFlag: bool = False):
     print("If data takes more than 10 seconds to download, to a ctrl + c to go to next stock")
     for code in codes:
         destination = os.path.join(destination_folder, code + '.csv')
@@ -44,12 +44,13 @@ def download(codes: List[str], allFlag: bool = False):
         with open(destination, 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
-            for price in prices:
-                writer.writerow(price)
+            prices_length = len(prices)
+            for i in range(prices_length):
+                writer.writerow(prices[prices_length - i - 1])
 
 
 if __name__ == '__main__':
     array = ['^GSPTSE', '^N225', '^TNX', '^VIX', 'AAPL',
              'ARL', 'BTC-USD', 'CL=F', 'GC=F', 'YVR']
-    download(array)
+    download_data(array)
     print("All data downloaded!")
