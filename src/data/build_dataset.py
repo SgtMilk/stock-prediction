@@ -1,4 +1,5 @@
 from typing import List
+from numpy.lib.function_base import append
 import pandas as pd
 import os
 from sklearn.preprocessing import MinMaxScaler
@@ -22,41 +23,41 @@ def build_dataset(code: str, history_points: int = 50):
     scaler = MinMaxScaler()
     data_normalised = scaler.fit_transform(data)
 
-    ohlcv_histories_normalised = np.array(
-        [data_normalised[i: i + history_points].copy() for i in range(len(data_normalised) - history_points)])
-    next_day_open_values_normalised = np.array(
-        [data_normalised[:, 0][i + history_points].copy() for i in range(len(data_normalised) - history_points)])
-    next_day_open_values_normalised = np.expand_dims(
-        next_day_open_values_normalised, -1)
+    # array of arrays of the last 50 day's data
+    x_data = np.array([data_normalised[-(history_points + i + 1):-(i + 1)]
+                      for i in range(len(data_normalised) - history_points - 1)])
 
-    next_day_open_values = np.array(
-        [data_normalised[:, 0][i + history_points].copy() for i in range(len(data_normalised) - history_points)])
-    next_day_open_values = np.expand_dims(next_day_open_values_normalised, -1)
+    # array of the next day's data scaled
+    y_data = np.array([data_normalised[-i]
+                      for i in range(len(data_normalised) - history_points - 1)])
+    # array of the next day's data unscaled
+    y_data_unscaled = np.array([data.iloc[-i]
+                               for i in range(len(data) - history_points - 1)])
 
-    y_normaliser = MinMaxScaler()
-    y_normaliser.fit(next_day_open_values_normalised)
-
-    assert ohlcv_histories_normalised.shape[0] == next_day_open_values_normalised.shape[0]
+    assert x_data.shape[0] == y_data.shape[0]
 
     test_split = 0.9  # the percent of data to be used for testing
-    n = int(ohlcv_histories_normalised.shape[0] * test_split)
+    n = int(x_data.shape[0] * test_split)
 
     # splitting the dataset up into train and test sets
 
-    ohlcv_train = ohlcv_histories_normalised[:n]
-    y_train = next_day_open_values_normalised[:n]
+    x_train = x_data[: n]
+    y_train = y_data[: n]
+    y_unscaled_train = y_data_unscaled[: n]
 
-    ohlcv_test = ohlcv_histories_normalised[n:]
-    y_test = next_day_open_values[n:]
+    x_test = x_data[n:]
+    y_test = y_data[n:]
+    y_unscaled_test = y_data_unscaled[n:]
 
-    unscaled_y_test = next_day_open_values[n:]
-
-    return ohlcv_train, y_train, ohlcv_test, y_test, unscaled_y_test
+    return x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test
 
 
 if __name__ == '__main__':
-    x_train, y_train, x_test, y_test, unscaled_y_test = build_dataset('AAPL')
-    print('x_train: \n')
-    print(x_train)
-    print('\ny_train: \n')
-    print(y_train)
+    x_train, y_train, y_unscaled_train, x_test, y_test, unscaled_y_test = build_dataset(
+        'AAPL')
+    print('x_train shape: ' + str(x_train.shape))
+    print('y_train shape: ' + str(y_train.shape))
+    print('y_unscaled_train shape: ' + str(y_unscaled_train.shape))
+    print('x_test shape: ' + str(x_test.shape))
+    print('y_test shape: ' + str(y_test.shape))
+    print('unscaled_y_test shape: ' + str(unscaled_y_test.shape))

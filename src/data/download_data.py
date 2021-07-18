@@ -44,9 +44,8 @@ def download_data(codes: List[str], allFlag: bool = False):
         with open(destination, 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
-            prices_length = len(prices)
-            for i in range(prices_length):
-                writer.writerow(prices[prices_length - i - 1])
+            for price in prices:
+                writer.writerow(price)
 
 
 if __name__ == '__main__':

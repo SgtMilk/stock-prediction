@@ -3,7 +3,7 @@ from data import build_dataset, download_data
 import datetime
 import os
 
-model_dir = os.path.abspath('./src/data/source')
+model_dir = os.path.abspath('./src/model/models')
 
 
 def train_stock(code: str):
@@ -11,7 +11,8 @@ def train_stock(code: str):
     download_data([code], allFlag=True)
 
     # making the data pwetty 👉️👈️
-    x_train, y_train, train, valid, test = build_dataset(code)
+    x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test = build_dataset(
+        code)
     print(x_train.shape)
     print(y_train.shape)
 
@@ -22,7 +23,7 @@ def train_stock(code: str):
     compile_model(model)
 
     # training the model
-    train_model(model, x_train[0], y_train)
+    train_model(model, x_train, y_train)
 
     file_name = os.path.join(model_dir, str(
         datetime.date.today()) + '-' + code + ".hdf5")
