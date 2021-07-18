@@ -19,41 +19,46 @@ def build_dataset(code: str, history_points: int = 50):
     del data['date']
     del data['formatted_date']
 
+    data = np.array(data[::-1])
+
     # scaling
     scaler = MinMaxScaler()
     data_normalised = scaler.fit_transform(data)
 
     # array of arrays of the last 50 day's data
-    x_data = np.array([data_normalised[-(history_points + i + 1):-(i + 1)]
-                      for i in range(len(data_normalised) - history_points - 1)])
+    x_data = np.array([data_normalised[i + 1: i + 1 + history_points]
+                      for i in range(len(data_normalised) - history_points)])
 
     # array of the next day's data scaled
-    y_data = np.array([data_normalised[-i]
-                      for i in range(len(data_normalised) - history_points - 1)])
+    y_data = np.array([data_normalised[i]
+                      for i in range(len(data_normalised) - history_points)])
     # array of the next day's data unscaled
-    y_data_unscaled = np.array([data.iloc[-i]
-                               for i in range(len(data) - history_points - 1)])
+    y_data_unscaled = np.array([data[i]
+                               for i in range(len(data) - history_points)])
 
     assert x_data.shape[0] == y_data.shape[0]
 
-    test_split = 0.9  # the percent of data to be used for testing
+    test_split = 0.1  # the percent of data to be used for testing
     n = int(x_data.shape[0] * test_split)
+
+    normalizer = MinMaxScaler()
+    normalizer.fit(y_data_unscaled)
 
     # splitting the dataset up into train and test sets
 
-    x_train = x_data[: n]
-    y_train = y_data[: n]
-    y_unscaled_train = y_data_unscaled[: n]
+    x_train = x_data[n:]
+    y_train = y_data[n:]
+    y_unscaled_train = y_data_unscaled[n:]
 
-    x_test = x_data[n:]
-    y_test = y_data[n:]
-    y_unscaled_test = y_data_unscaled[n:]
+    x_test = x_data[:n]
+    y_test = y_data[:n]
+    y_unscaled_test = y_data_unscaled[:n]
 
-    return x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test
+    return x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
 
 
 if __name__ == '__main__':
-    x_train, y_train, y_unscaled_train, x_test, y_test, unscaled_y_test = build_dataset(
+    x_train, y_train, y_unscaled_train, x_test, y_test, unscaled_y_test, normalizer = build_dataset(
         'AAPL')
     print('x_train shape: ' + str(x_train.shape))
     print('y_train shape: ' + str(y_train.shape))

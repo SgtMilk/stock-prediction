@@ -1,10 +1,11 @@
-from tensorflow.keras.models import Sequential
-import json
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
 import os
 
 params_folder = os.path.abspath('./src/experiments/base_model/params.json')
 
 
-def compile_model(model: Sequential):
+def compile_model(model: Model):
     # params = json.loads(params_folder)
-    model.compile(loss='mean_squared_error', optimizer='adam')
+    adam = Adam(learning_rate=0.0005)
+    model.compile(loss='mse', optimizer=adam)

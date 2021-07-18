@@ -1,7 +1,8 @@
-from model import build_model, compile_model, train_model
+from model import build_model, compile_model, train_model, evaluate_model
 from data import build_dataset, download_data
 import datetime
 import os
+import tensorflow as tf
 
 model_dir = os.path.abspath('./src/model/models')
 
@@ -11,10 +12,8 @@ def train_stock(code: str):
     download_data([code], allFlag=True)
 
     # making the data pwetty 👉️👈️
-    x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test = build_dataset(
+    x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer = build_dataset(
         code)
-    print(x_train.shape)
-    print(y_train.shape)
 
     # building the model
     model = build_model(x_train[0].shape)
@@ -30,6 +29,10 @@ def train_stock(code: str):
 
     model.save(file_name)
 
+    evaluate_model(model, x_test, y_unscaled_test, normalizer)
+
 
 if __name__ == '__main__':
-    train_stock('AAPL')
+    tf.random.set_seed(3)
+    tf.autograph.set_verbosity(1)
+    train_stock('ARL')

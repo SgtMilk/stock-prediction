@@ -1,1 +1,1 @@
-sudo pip3 install tensorflow pandas numpy yahoofinancials sklearn
+sudo pip3 install tensorflow pandas numpy yahoofinancials sklearn matplotlib
