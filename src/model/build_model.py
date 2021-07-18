@@ -1,17 +1,25 @@
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, LSTM, Activation, Dropout, Input
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM, Activation, Dropout, Input, Concatenate
 
 
-def build_model(input_shape):
-    lstm_input = Input(shape=input_shape, name='lstm_input')
-    x = LSTM(50, name='lstm_0')(lstm_input)
-    x = Dropout(0.2, name='lstm_dropout_0')(x)
-    x = Dense(64, name='dense_0')(x)
-    x = Activation('sigmoid', name='sigmoid_0')(x)
-    x = Dense(6, name='dense_1')(x)
-    output = Activation('linear', name='linear_output')(x)
-    model = Model(inputs=lstm_input, outputs=output)
-    return model
+def build_model(input_shape, tech_shape):
+    regressor = Sequential()
+
+    regressor.add(LSTM(units=50, return_sequences=True,
+                  input_shape=input_shape))
+    regressor.add(Dropout(0.2))
+
+    regressor.add(LSTM(units=50, return_sequences=True))
+    regressor.add(Dropout(0.2))
+
+    regressor.add(LSTM(units=50, return_sequences=True))
+    regressor.add(Dropout(0.2))
+
+    regressor.add(LSTM(units=50))
+    regressor.add(Dropout(0.2))
+
+    regressor.add(Dense(units=6))
+    return regressor
 
 
 if __name__ == '__main__':

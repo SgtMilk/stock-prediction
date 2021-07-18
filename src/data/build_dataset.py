@@ -36,6 +36,13 @@ def build_dataset(code: str, history_points: int = 50):
     y_data_unscaled = np.array([data[i]
                                for i in range(len(data) - history_points)])
 
+    technical_indicators = []
+    for his in x_data:
+        sma = np.mean([value[3] for value in his[:3]])
+        technical_indicators.append(sma)
+
+    technical_indicators = np.array(technical_indicators)
+
     assert x_data.shape[0] == y_data.shape[0]
 
     test_split = 0.1  # the percent of data to be used for testing
@@ -49,12 +56,14 @@ def build_dataset(code: str, history_points: int = 50):
     x_train = x_data[n:]
     y_train = y_data[n:]
     y_unscaled_train = y_data_unscaled[n:]
+    technical_indicator_train = technical_indicators[n:]
 
     x_test = x_data[:n]
     y_test = y_data[:n]
     y_unscaled_test = y_data_unscaled[:n]
+    technical_indicators_test = technical_indicators[:n]
 
-    return x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
+    return x_train, y_train, y_unscaled_train, technical_indicator_train, x_test, y_test, y_unscaled_test, technical_indicators_test, normalizer
 
 
 if __name__ == '__main__':

@@ -12,24 +12,25 @@ def train_stock(code: str):
     download_data([code], allFlag=True)
 
     # making the data pwetty 👉️👈️
-    x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer = build_dataset(
+    x_train, y_train, y_unscaled_train, technical_indicator_train, x_test, y_test, y_unscaled_test, technical_indicators_test, normalizer = build_dataset(
         code)
 
     # building the model
-    model = build_model(x_train[0].shape)
+    model = build_model(x_train[0].shape, technical_indicator_train.shape)
 
     # compiling the model
     compile_model(model)
 
     # training the model
-    train_model(model, x_train, y_train)
+    train_model(model, x_train, y_train, technical_indicator_train)
 
     file_name = os.path.join(model_dir, str(
         datetime.date.today()) + '-' + code + ".hdf5")
 
     model.save(file_name)
 
-    evaluate_model(model, x_test, y_unscaled_test, normalizer)
+    evaluate_model(model, x_test, technical_indicators_test,
+                   y_unscaled_test, normalizer)
 
 
 if __name__ == '__main__':
