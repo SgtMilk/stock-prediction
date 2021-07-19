@@ -8,7 +8,7 @@ import numpy as np
 destination_folder = os.path.abspath('./src/data/source')
 
 
-def build_dataset(code: str, history_points: int = 50):
+def build_dataset(code: str, mode: str = 'daily', history_points: int = 50):
     file = os.path.join(destination_folder, code + '.csv')
 
     if not os.path.exists(file):
@@ -28,42 +28,51 @@ def build_dataset(code: str, history_points: int = 50):
     # array of arrays of the last 50 day's data
     x_data = np.array([data_normalised[i + 1: i + 1 + history_points]
                       for i in range(len(data_normalised) - history_points)])
-
-    # array of the next day's data scaled
-    y_data = np.array([data_normalised[i]
-                      for i in range(len(data_normalised) - history_points)])
-    # array of the next day's data unscaled
-    y_data_unscaled = np.array([data[i]
-                               for i in range(len(data) - history_points)])
-
-    technical_indicators = []
-    for his in x_data:
-        sma = np.mean([value[3] for value in his[:3]])
-        technical_indicators.append(sma)
-
-    technical_indicators = np.array(technical_indicators)
+    y_data = []
+    y_data_unscaled = []
+    if mode == 'daily':
+        # array of the next day's data scaled
+        y_data = np.array([data_normalised[i]
+                           for i in range(len(data_normalised) - history_points)])
+        # array of the next day's data unscaled
+        y_data_unscaled = np.array([data[i]
+                                    for i in range(len(data) - history_points)])
+    elif mode == 'weekly':
+        # array of arrays of the next 7 day's data scaled
+        y_data = np.array([data_normalised[i: i + 5]
+                           for i in range(len(data_normalised) - history_points)])
+        # array of arrays of the next 7 day's data unscaled
+        y_data_unscaled = np.array([data[i: i + 5]
+                                    for i in range(len(data) - history_points)])
+    elif mode == 'monthly':
+        # array of arrays of the next 7 day's data scaled
+        y_data = np.array([data_normalised[i: i + 30]
+                           for i in range(len(data_normalised) - history_points)])
+        # array of arrays of the next 7 day's data unscaled
+        y_data_unscaled = np.array([data[i: i + 30]
+                                    for i in range(len(data) - history_points)])
+    else:
+        raise NameError('Bad time period')
 
     assert x_data.shape[0] == y_data.shape[0]
-
     test_split = 0.1  # the percent of data to be used for testing
     n = int(x_data.shape[0] * test_split)
 
     normalizer = MinMaxScaler()
-    normalizer.fit(y_data_unscaled)
+    w, x, y = y_data_unscaled.shape
+    normalizer.fit(y_data_unscaled.reshape((w, x*y)))
 
     # splitting the dataset up into train and test sets
 
     x_train = x_data[n:]
     y_train = y_data[n:]
     y_unscaled_train = y_data_unscaled[n:]
-    technical_indicator_train = technical_indicators[n:]
 
     x_test = x_data[:n]
     y_test = y_data[:n]
     y_unscaled_test = y_data_unscaled[:n]
-    technical_indicators_test = technical_indicators[:n]
 
-    return x_train, y_train, y_unscaled_train, technical_indicator_train, x_test, y_test, y_unscaled_test, technical_indicators_test, normalizer
+    return x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
 
 
 if __name__ == '__main__':

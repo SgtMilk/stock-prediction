@@ -2,7 +2,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, Activation, Dropout, Input, Concatenate
 
 
-def build_model(input_shape, tech_shape):
+def build_model(input_shape):
     regressor = Sequential()
 
     regressor.add(LSTM(units=50, return_sequences=True,
