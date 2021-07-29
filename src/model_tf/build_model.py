@@ -18,7 +18,7 @@ def build_model(input_shape):
     regressor.add(LSTM(units=50))
     regressor.add(Dropout(0.2))
 
-    regressor.add(Dense(units=6))
+    regressor.add(Dense(units=(5, 6)))
     return regressor
 
 

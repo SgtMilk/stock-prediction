@@ -1,4 +1,4 @@
-from model import build_model, compile_model, train_model, evaluate_model
+from model_tf import build_model, compile_model, train_model, evaluate_model
 from data import build_dataset, download_data
 import datetime
 import os
@@ -15,8 +15,10 @@ def train_stock(code: str):
     x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer = build_dataset(
         code, mode='weekly')
 
+    print(y_train.shape)
+
     # building the model
-    model = build_model(x_train[0].shape)
+    model = build_model(y_train.shape)
 
     # compiling the model
     compile_model(model)
