@@ -1,10 +1,11 @@
 from tensorflow.keras.models import Model
 from sklearn.preprocessing import MinMaxScaler
+from src.data import Mode
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-def evaluate_model(model: Model, x_test, y_test_unscaled, normalizer: MinMaxScaler, mode: str = 'daily'):
+def evaluate_model(model: Model, x_test, y_test_unscaled, normalizer: MinMaxScaler, mode: int):
 
     predicted_y_test = model.predict(x_test)
 
@@ -24,14 +25,14 @@ def evaluate_model(model: Model, x_test, y_test_unscaled, normalizer: MinMaxScal
 
     plt.gcf().set_size_inches(22, 15, forward=True)
 
-    if mode == 'daily':
-        plt.plot([value[3] for value in y_test_unscaled][::-1], label='real')
-        plt.plot([value[3]
+    if mode == Mode.daily:
+        plt.plot([value for value in y_test_unscaled][::-1], label='real')
+        plt.plot([value
                   for value in unscaled_predicted][::-1], label='predicted')
-    elif mode == 'weekly' or mode == 'monthly':
-        plt.plot([value[3]
+    elif mode == Mode.weekly or mode == Mode.monthly:
+        plt.plot([value
                  for value in y_test_unscaled[0]][::-1], label='real')
-        plt.plot([value[3]
+        plt.plot([value
                   for value in unscaled_predicted[0]][::-1], label='predicted')
     else:
         raise NameError('Bad time period')

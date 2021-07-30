@@ -1,21 +1,28 @@
 from model_tf import build_model, compile_model, train_model, evaluate_model
-from data import build_dataset, download_data
+from src.utils.print_colors import colors
+from data import Dataset, Mode
 import datetime
 import os
 import tensorflow as tf
 
-model_dir = os.path.abspath('./src/model/models')
 
+def train_stock(code: str, mode: int = Mode.daily):
+    """
+    does the whole tensorflow training process
+    :param code: the stock's code
+    :param mode: Mode.daily, Mode.weekly, Mode.monthly
+    """
 
-def train_stock(code: str):
-    # making sure the data is downloaded
-    download_data([code], allFlag=True)
+    # downloading and making the data pwetty 👉️👈️
+    dataset = Dataset(code, y_flag=True)
 
-    # making the data pwetty 👉️👈️
-    x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer = build_dataset(
-        code, mode='weekly')
+    # getting the right data
+    x_train, y_train = dataset.get_train(mode)
+    x_test, y_unscaled_test = dataset.get_test(mode)
+    normalizer = dataset.get_normalizer(mode)
 
-    print(y_train.shape)
+    if not x_train or not x_test or not normalizer:
+        raise NameError(colors.FAIL + "Could not fetch data" + colors.ENDC)
 
     # building the model
     model = build_model(y_train.shape)
@@ -26,13 +33,12 @@ def train_stock(code: str):
     # training the model
     train_model(model, x_train, y_train)
 
-    file_name = os.path.join(model_dir, str(
-        datetime.date.today()) + '-' + code + ".hdf5")
-
+    # saving the model
+    model_dir = os.path.abspath('./src/model/models')
+    file_name = os.path.join(model_dir, str(datetime.date.today()) + '-' + code + ".hdf5")
     model.save(file_name)
 
-    evaluate_model(model, x_test,
-                   y_unscaled_test, normalizer, mode='weekly')
+    evaluate_model(model, x_test, y_unscaled_test, normalizer, mode)
 
 
 if __name__ == '__main__':
