@@ -6,7 +6,14 @@ import matplotlib.pyplot as plt
 
 
 def evaluate_model(model: Model, x_test, y_test_unscaled, normalizer: MinMaxScaler, mode: int):
-
+    """
+    Evaluates the model and plots it
+    :param model: the tensorflow model
+    :param x_test
+    :param y_test_unscaled
+    :param normalizer
+    :param mode: Mode.daily, Mode.weekly, Mode.monthly
+    """
     predicted_y_test = model.predict(x_test)
 
     n, x, y = predicted_y_test.shape

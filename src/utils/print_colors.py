@@ -1,4 +1,7 @@
-class colors:
+class Colors:
+    """
+    This class incorporates color codes for printing to console
+    """
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKCYAN = '\033[96m'

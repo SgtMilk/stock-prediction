@@ -1,1 +1,1 @@
-from .print_colors import colors
+from .print_colors import Colors

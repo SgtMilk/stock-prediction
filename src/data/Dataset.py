@@ -1,4 +1,4 @@
-from src.utils.print_colors import colors
+from src.utils.print_colors import Colors
 from yahoofinancials import YahooFinancials
 from sklearn.preprocessing import MinMaxScaler
 import os
@@ -61,16 +61,16 @@ class Dataset:
         csv_columns = ['date', 'high', 'low', 'open',
                        'close', 'volume', 'adjclose', 'formatted_date']
 
-        print(colors.WARNING + "If data takes more than 10 seconds to download, ctrl + c will end the forever loop"
-              + colors.ENDC)
+        print(Colors.WARNING + "If data takes more than 10 seconds to download, ctrl + c will end the forever loop"
+              + Colors.ENDC)
 
         destination = os.path.join(destination_folder, self.code + '.csv')
         if y_flag and os.path.exists(destination):
             os.remove(destination)
 
         if not y_flag and os.path.exists(destination):
-            response = input(colors.OKBLUE +
-                             "would you like to overwrite that file(" + destination + ")? (y/n)" + colors.ENDC)
+            response = input(Colors.OKBLUE +
+                             "would you like to overwrite that file(" + destination + ")? (y/n)" + Colors.ENDC)
             if response == 'y' or response == 'yes':
                 os.remove(destination)
             else:
@@ -86,8 +86,8 @@ class Dataset:
                                                                current_date),
                                                            time_interval='daily')
         except OSError:
-            print(colors.FAIL + "\nCould not download data for " +
-                  self.code + " (it probably doesn't exist" + colors.ENDC)
+            print(Colors.FAIL + "\nCould not download data for " +
+                  self.code + " (it probably doesn't exist" + Colors.ENDC)
             return None
 
         prices = data[self.code]['prices']
@@ -97,7 +97,7 @@ class Dataset:
             writer.writeheader()
             for price in prices:
                 writer.writerow(price)
-        print(colors.OKGREEN + "Data Downloaded!" + '\033[0m' + colors.ENDC)
+        print(Colors.OKGREEN + "Data Downloaded!" + '\033[0m' + Colors.ENDC)
         return prices
 
     def build_dataset(self, mode: int, data=None):
@@ -113,7 +113,7 @@ class Dataset:
             file = os.path.join(destination_folder, self.code + '.csv')
 
             if not os.path.exists(file):
-                print(colors.FAIL + "Data has not been downloaded for this stock code" + colors.ENDC)
+                print(Colors.FAIL + "Data has not been downloaded for this stock code" + Colors.ENDC)
                 return None
 
             data = pd.read_csv(file)
@@ -163,7 +163,6 @@ class Dataset:
         :param split: percentage of test data in float format
         :return: None if there is no data, otherwise the x and y train data
         """
-        x = y = None
         if mode == Mode.daily:
             x = self.x_daily
             y = self.y_daily
@@ -188,7 +187,6 @@ class Dataset:
         :param split: percentage of test data in float format
         :return: None if there is no data, otherwise the x and y_unscaled testing data
         """
-        x = y_unscaled = None
         if mode == Mode.daily:
             x = self.x_daily
             y_unscaled = self.y_daily
@@ -206,7 +204,7 @@ class Dataset:
         n = int(x.shape[0] * split)
         return x[:n], y_unscaled[:n]
 
-    def get_normalizer(self, mode:int):
+    def get_normalizer(self, mode: int):
         if mode == Mode.daily:
             return self.normalizer_daily
         elif mode == Mode.weekly:

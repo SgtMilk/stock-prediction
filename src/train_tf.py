@@ -1,5 +1,5 @@
 from model_tf import build_model, compile_model, train_model, evaluate_model
-from src.utils.print_colors import colors
+from src.utils.print_colors import Colors
 from data import Dataset, Mode
 import datetime
 import os
@@ -22,7 +22,7 @@ def train_stock(code: str, mode: int = Mode.daily):
     normalizer = dataset.get_normalizer(mode)
 
     if not x_train or not x_test or not normalizer:
-        raise NameError(colors.FAIL + "Could not fetch data" + colors.ENDC)
+        raise NameError(Colors.FAIL + "Could not fetch data" + Colors.ENDC)
 
     # building the model
     model = build_model(y_train.shape)
