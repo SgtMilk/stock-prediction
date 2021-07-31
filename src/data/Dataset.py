@@ -1,3 +1,5 @@
+import torch
+
 from src.utils.print_colors import Colors
 from yahoofinancials import YahooFinancials
 from sklearn.preprocessing import MinMaxScaler
@@ -17,7 +19,7 @@ class Mode:
 class Dataset:
     """collects data for a stock"""
 
-    def __init__(self, code: str, num_days: int = 50, y_flag: bool = False) -> None:
+    def __init__(self, code: str, mode: int, num_days: int = 50, y_flag: bool = False) -> None:
         """
         __init__ initiates the dataset with a mode and a stock code.
         It also downloads the dataset from the past 5 years and stocks it in ./source
@@ -26,19 +28,16 @@ class Dataset:
         :param num_days: the number of days back the data will be formatted to
         """
         self.code = code
+        self.mode = mode
         self.num_days = num_days
 
         # downloading data and putting it in a .csv file
         data = self.download_data(y_flag=y_flag)
 
         # initializing variables
-        self.x_daily = self.y_daily = self.y_unscaled_daily = self.normalizer_daily = self.x_weekly = self.y_weekly \
-            = self.y_unscaled_weekly = self.normalizer_weekly = self.x_monthly = self.y_monthly \
-            = self.y_unscaled_monthly = self.normalizer_monthly = None
+        self.x = self.y = self.y_unscaled = self.normalizer = None
 
-        # processing data
-        for i in [Mode.daily, Mode.weekly, Mode.monthly]:
-            self.build_dataset(i, data)
+        self.build_dataset(data)
 
     def update_data(self):
         """
@@ -48,8 +47,7 @@ class Dataset:
         data = self.download_data()
 
         # processing data
-        for i in [Mode.daily, Mode.weekly, Mode.monthly]:
-            self.build_dataset(i, data)
+        self.build_dataset(data)
 
     def download_data(self, y_flag: bool = False):
         """
@@ -100,12 +98,11 @@ class Dataset:
         print(Colors.OKGREEN + "Data Downloaded!" + '\033[0m' + Colors.ENDC)
         return prices
 
-    def build_dataset(self, mode: int, data=None):
+    def build_dataset(self, data=None):
         """
         build dataset will clean up the data according to a mode
 
         :param data: optional, if it is None, it will fetch data in the according .csv file
-        :param mode: Mode.daily, Mode.weekly, Mode.monthly
         :return: x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
         """
         if data is None:
@@ -132,15 +129,15 @@ class Dataset:
         data_normalised = scaler.fit_transform(data)
 
         # array of arrays of the last 50 day's data
-        x_data = np.array([data_normalised[i + mode: i + mode + self.num_days]
-                           for i in range(len(data_normalised) - self.num_days - (mode - 1))])
+        x_data = np.array([data_normalised[i + self.mode: i + self.mode + self.num_days]
+                           for i in range(len(data_normalised) - self.num_days - (self.mode - 1))])
 
         # array of arrays of the next 7 day's data scaled
-        y_data = np.array([data_normalised[i: i + mode, 3]
-                           for i in range(len(data_normalised) - self.num_days - (mode - 1))])
+        y_data = np.array([data_normalised[i: i + self.mode, 3]
+                           for i in range(len(data_normalised) - self.num_days - (self.mode - 1))])
         # array of arrays of the next 7 day's data unscaled
-        y_data_unscaled = np.array([data[i: i + mode, 3]
-                                    for i in range(len(data) - self.num_days - (mode - 1))])
+        y_data_unscaled = np.array([data[i: i + self.mode, 3]
+                                    for i in range(len(data) - self.num_days - (self.mode - 1))])
 
         assert x_data.shape[0] == y_data.shape[0]
 
@@ -148,72 +145,62 @@ class Dataset:
         normalizer.fit(y_data_unscaled)
 
         # setting class variables
-        if mode == Mode.daily:
-            self.x_daily, self.y_daily, self.y_unscaled_daily, self.normalizer_daily \
-                = x_data, y_data, y_data_unscaled, normalizer
-        elif mode == Mode.weekly:
-            self.x_weekly, self.y_weekly, self.y_unscaled_weekly, self.normalizer_weekly \
-                = x_data, y_data, y_data_unscaled, normalizer
-        elif mode == Mode.monthly:
-            self.x_monthly, self.y_monthly, self.y_unscaled_monthly, self.normalizer_monthly \
-                = x_data, y_data, y_data_unscaled, normalizer
+        self.x, self.y, self.y_unscaled, self.normalizer = x_data, y_data, y_data_unscaled, normalizer
 
         return x_data, y_data, y_data_unscaled, normalizer
 
-    def get_train(self, mode: int, split: float = 0.1):
+    def get_train(self, split: float = 0.1):
         """
         getter for the training dataset
-        :param mode: Mode.daily, Mode.weekly, Mode.monthly
         :param split: percentage of test data in float format
         :return: None if there is no data, otherwise the x and y train data
         """
-        if mode == Mode.daily:
-            x = self.x_daily
-            y = self.y_daily
-        elif mode == Mode.weekly:
-            x = self.x_weekly
-            y = self.y_weekly
-        elif mode == Mode.monthly:
-            x = self.x_monthly
-            y = self.y_monthly
-        else:
-            return None
 
-        if x or y is None:
+        if self.x or self.y is None:
             return None
-        n = int(x.shape[0] * split)
-        return x[n:], y[n:]
+        n = int(self.x.shape[0] * split)
+        return self.x[n:], self.y[n:]
 
-    def get_test(self, mode: int, split: float = 0.1):
+    def get_test(self, split: float = 0.1):
         """
         getter for the testing dataset
-        :param mode: Mode.daily, Mode.weekly, Mode.monthly
         :param split: percentage of test data in float format
         :return: None if there is no data, otherwise the x and y_unscaled testing data
         """
-        if mode == Mode.daily:
-            x = self.x_daily
-            y_unscaled = self.y_daily
-        elif mode == Mode.weekly:
-            x = self.x_weekly
-            y_unscaled = self.y_weekly
-        elif mode == Mode.monthly:
-            x = self.x_monthly
-            y_unscaled = self.y_monthly
-        else:
-            return None
 
-        if x or y_unscaled is None:
+        if self.x or self.y_unscaled is None:
             return None
-        n = int(x.shape[0] * split)
-        return x[:n], y_unscaled[:n]
+        n = int(self.x.shape[0] * split)
+        return self.x[:n], self.y_unscaled[:n]
 
-    def get_normalizer(self, mode: int):
-        if mode == Mode.daily:
-            return self.normalizer_daily
-        elif mode == Mode.weekly:
-            return self.normalizer_weekly
-        elif mode == Mode.monthly:
-            return self.normalizer_monthly
-        else:
-            return None
+    def transform_to_numpy(self):
+        """
+        Transforms all the class data to numpy arrays
+        """
+        if torch.is_tensor(self.x):
+            self.x = self.x.numpy()
+        if torch.is_tensor(self.y):
+            self.y = self.y.numpy()
+        if torch.is_tensor(self.y_unscaled):
+            self.y_unscaled = self.y_unscaled.numpy()
+
+    def transform_to_torch(self):
+        """
+        Transforms all the class data to torch tensors
+        """
+        gpu = torch.cuda.is_available()
+        if not torch.is_tensor(self.x) and self.x is not None:
+            if gpu:
+                self.x = torch.from_numpy(self.x).to("cuda")
+            else:
+                self.x = torch.from_numpy(self.x)
+        if not torch.is_tensor(self.y) and self.y is not None:
+            if gpu:
+                self.y = torch.from_numpy(self.y).to("cuda")
+            else:
+                self.y = torch.from_numpy(self.y)
+        if not torch.is_tensor(self.y_unscaled) and self.y_unscaled is not None:
+            if gpu:
+                self.y_unscaled = torch.from_numpy(self.y_unscaled).to("cuda")
+            else:
+                self.y_unscaled = torch.from_numpy(self.y_unscaled)

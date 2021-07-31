@@ -14,12 +14,12 @@ def train_stock(code: str, mode: int = Mode.daily):
     """
 
     # downloading and making the data pwetty 👉️👈️
-    dataset = Dataset(code, y_flag=True)
+    dataset = Dataset(code, y_flag=True, mode=mode)
 
     # getting the right data
     x_train, y_train = dataset.get_train(mode)
     x_test, y_unscaled_test = dataset.get_test(mode)
-    normalizer = dataset.get_normalizer(mode)
+    normalizer = dataset.normalizer
 
     if not x_train or not x_test or not normalizer:
         raise NameError(Colors.FAIL + "Could not fetch data" + Colors.ENDC)

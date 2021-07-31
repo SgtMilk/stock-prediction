@@ -1,5 +1,5 @@
 import unittest
-from Dataset import Dataset
+from Dataset import Dataset, Mode
 import warnings
 import numpy as np
 
@@ -27,43 +27,43 @@ class TestStringMethods(unittest.TestCase):
         Tests if the data has all the right shape
         """
         num_days = 50
-        dataset = Dataset("ARL", num_days, True)
+        dataset_daily = Dataset("ARL", mode=Mode.daily, num_days=num_days, y_flag=True)
+        dataset_weekly = Dataset("ARL", mode=Mode.weekly, num_days=num_days, y_flag=True)
+        dataset_monthly = Dataset("ARL", mode=Mode.monthly, num_days=num_days, y_flag=True)
 
         # x testing
-        self.assertEqual(dataset.x_daily.shape[1:], dataset.x_weekly.shape[1:])
-        self.assertEqual(dataset.x_daily.shape[1:], dataset.x_monthly.shape[1:])
-        self.assertEqual(dataset.x_daily.shape[1:], (num_days, 6))
-        self.assertEqual(dataset.x_daily.shape[0], dataset.x_weekly.shape[0] + 4)
-        self.assertEqual(dataset.x_daily.shape[0], dataset.x_monthly.shape[0] + 21)
+        self.assertEqual(dataset_daily.x.shape[1:], dataset_weekly.x.shape[1:])
+        self.assertEqual(dataset_daily.x.shape[1:], dataset_monthly.x.shape[1:])
+        self.assertEqual(dataset_daily.x.shape[1:], (num_days, 6))
+        self.assertEqual(dataset_daily.x.shape[0], dataset_weekly.x.shape[0] + 4)
+        self.assertEqual(dataset_daily.x.shape[0], dataset_monthly.x.shape[0] + 21)
 
         # y testing
-        self.assertEqual(dataset.y_daily.shape, dataset.y_unscaled_daily.shape)
-        self.assertEqual(dataset.y_daily.shape, (dataset.x_daily.shape[0], 1))
+        self.assertEqual(dataset_daily.y.shape, dataset_daily.y_unscaled.shape)
+        self.assertEqual(dataset_daily.y.shape, (dataset_daily.x.shape[0], 1))
 
-        self.assertEqual(dataset.y_weekly.shape, dataset.y_unscaled_weekly.shape)
-        self.assertEqual(dataset.y_weekly.shape, (dataset.x_weekly.shape[0], 5))
+        self.assertEqual(dataset_weekly.y.shape, dataset_weekly.y_unscaled.shape)
+        self.assertEqual(dataset_weekly.y.shape, (dataset_weekly.x.shape[0], 5))
 
-        self.assertEqual(dataset.y_monthly.shape, dataset.y_unscaled_monthly.shape)
-        self.assertEqual(dataset.y_monthly.shape, (dataset.x_monthly.shape[0], 22))
+        self.assertEqual(dataset_monthly.y.shape, dataset_monthly.y_unscaled.shape)
+        self.assertEqual(dataset_monthly.y.shape, (dataset_monthly.x.shape[0], 22))
 
     @ignore_deprecation_warnings
     def test_normalizer(self):
         """
         Tests if the normalizer works as expected
         """
-        dataset = Dataset("ARL", 50, True)
+        dataset_daily = Dataset("ARL", mode=Mode.daily, num_days=50, y_flag=True)
+        dataset_weekly = Dataset("ARL", mode=Mode.weekly, num_days=50, y_flag=True)
 
-        self.assertIsNotNone(dataset.normalizer_daily)
-        self.assertIsNotNone(dataset.normalizer_weekly)
-        self.assertIsNotNone(dataset.normalizer_monthly)
+        self.assertIsNotNone(dataset_daily.normalizer)
+        self.assertIsNotNone(dataset_weekly.normalizer)
 
-        inverse_daily = dataset.normalizer_daily.inverse_transform(dataset.y_daily)
-        inverse_weekly = dataset.normalizer_weekly.inverse_transform(dataset.y_weekly)
-        inverse_monthly = dataset.normalizer_monthly.inverse_transform(dataset.y_monthly)
+        inverse_daily = dataset_daily.normalizer.inverse_transform(dataset_daily.y)
+        inverse_weekly = dataset_weekly.normalizer.inverse_transform(dataset_weekly.y)
 
-        np.testing.assert_array_almost_equal(inverse_daily, dataset.y_unscaled_daily)
-        np.testing.assert_array_almost_equal(inverse_weekly, dataset.y_unscaled_weekly)
-        np.testing.assert_array_almost_equal(inverse_monthly, dataset.y_unscaled_monthly)
+        np.testing.assert_array_almost_equal(inverse_daily, dataset_daily.y_unscaled)
+        np.testing.assert_array_almost_equal(inverse_weekly, dataset_weekly.y_unscaled)
 
 
 if __name__ == '__main__':
