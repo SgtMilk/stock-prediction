@@ -57,7 +57,7 @@ class Dataset:
 
         :param y_flag: defaults to false, will not ask if you want to overwrite older files
         """
-        destination_folder = os.path.abspath('./src/data/source')
+        destination_folder = os.path.abspath('./source')
         csv_columns = ['date', 'high', 'low', 'open',
                        'close', 'volume', 'adjclose', 'formatted_date']
 
@@ -109,7 +109,7 @@ class Dataset:
         :return: x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
         """
         if data is None:
-            destination_folder = os.path.abspath('./src/data/source')
+            destination_folder = os.path.abspath('./source')
             file = os.path.join(destination_folder, self.code + '.csv')
 
             if not os.path.exists(file):
@@ -117,6 +117,10 @@ class Dataset:
                 return None
 
             data = pd.read_csv(file)
+        else:
+            csv_columns = ['date', 'high', 'low', 'open',
+                           'close', 'volume', 'adjclose', 'formatted_date']
+            data = pd.DataFrame(data, columns=csv_columns)
 
         del data['date']
         del data['formatted_date']
@@ -128,15 +132,15 @@ class Dataset:
         data_normalised = scaler.fit_transform(data)
 
         # array of arrays of the last 50 day's data
-        x_data = np.array([data_normalised[i + 1: i + 1 + self.num_days]
-                           for i in range(len(data_normalised) - self.num_days)])
+        x_data = np.array([data_normalised[i + mode: i + mode + self.num_days]
+                           for i in range(len(data_normalised) - self.num_days - (mode - 1))])
 
         # array of arrays of the next 7 day's data scaled
         y_data = np.array([data_normalised[i: i + mode, 3]
-                           for i in range(len(data_normalised) - self.num_days)])
+                           for i in range(len(data_normalised) - self.num_days - (mode - 1))])
         # array of arrays of the next 7 day's data unscaled
         y_data_unscaled = np.array([data[i: i + mode, 3]
-                                    for i in range(len(data) - self.num_days)])
+                                    for i in range(len(data) - self.num_days - (mode - 1))])
 
         assert x_data.shape[0] == y_data.shape[0]
 
