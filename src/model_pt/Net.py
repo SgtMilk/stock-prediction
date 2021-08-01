@@ -7,30 +7,30 @@ class Net:
     The Net class will build the model and train it.
     """
 
-    def __init__(self, optimizer: optim, loss_func, generate_model):
+    def __init__(self, optimizer: optim, loss_func, model):
         """
         The __init__ function will set all training parameters and generate the model
         :param optimizer: the training optimizer
         :param loss_func: the training loss function
-        :param generate_model: this function will generate a training model
+        :param model: the pytorch model
         """
         self.optimizer = optimizer
         self.loss_func = loss_func
-        self.model = generate_model()
+        self.model = model
 
         self.weights_train = None
         self.loss_train = None
         self.loss_validation = None
 
-    def train(self, epochs: int, data: Dataset, validation_split: float, verbosity_interval: int = 1):
+    def train(self, epochs: int, data, validation_split: float, verbosity_interval: int = 1):
         """
         The training loop for the net
         :param epochs: the number of epochs the training loop will run
-        :param data: the dataset
+        :param data: the dataset's train data
         :param validation_split: the split between validation and training data
         :param verbosity_interval: at which epoch interval there will be logging
         """
-        x, y = data.get_train()
+        x, y = data
         n = int(x.shape[0] * (1 - validation_split))
         x_train, y_train = x[:n], y[:n]
         x_validation, y_validation = x[n:], x[n:]
@@ -53,11 +53,11 @@ class Net:
                 print(f"Epoch {epoch}, Training Loss: {self.loss_train.item():.4f}, " +
                       f"Validation Loss: {self.loss_validation:.4f}")
 
-    def evaluate(self, data: Dataset):
+    def evaluate(self, test_data):
         # TODO: implement this
         """
         This function will evaluate the model
-        :param data: the dataset
+        :param test_data: the dataset
         """
-        print(data)
+        print(test_data)
         print(self.loss_train)
