@@ -6,7 +6,7 @@ import numpy as np
 
 def ignore_deprecation_warnings(test_func):
     """
-    because yahoo financials has a deprecation warning
+    Ignores deprecation warnings
     """
     def do_test(self, *args, **kwargs):
         with warnings.catch_warnings():
@@ -16,7 +16,7 @@ def ignore_deprecation_warnings(test_func):
     return do_test
 
 
-class TestStringMethods(unittest.TestCase):
+class TestDataset(unittest.TestCase):
     """
     Testing class for the Dataset class
     """
