@@ -166,7 +166,7 @@ class Dataset:
         :return: None if there is no data, otherwise the x and y_unscaled testing data
         """
 
-        if self.x or self.y_unscaled is None:
+        if self.x.all() or self.y_unscaled.all() is None:
             return None
         n = int(self.x.shape[0] * split)
         return self.x[:n], self.y_unscaled[:n]
@@ -188,17 +188,10 @@ class Dataset:
         """
         gpu = torch.cuda.is_available()
         if not torch.is_tensor(self.x) and self.x is not None:
-            if gpu:
-                self.x = torch.from_numpy(self.x).float().to("cuda")
-            else:
-                self.x = torch.from_numpy(self.x).float()
+            self.x = torch.from_numpy(self.x).float()
+
         if not torch.is_tensor(self.y) and self.y is not None:
-            if gpu:
-                self.y = torch.from_numpy(self.y).float().to("cuda")
-            else:
-                self.y = torch.from_numpy(self.y).float()
+            self.y = torch.from_numpy(self.y).float()
+
         if not torch.is_tensor(self.y_unscaled) and self.y_unscaled is not None:
-            if gpu:
-                self.y_unscaled = torch.from_numpy(self.y_unscaled).float().to("cuda")
-            else:
-                self.y_unscaled = torch.from_numpy(self.y_unscaled).float()
+            self.y_unscaled = torch.from_numpy(self.y_unscaled).float()

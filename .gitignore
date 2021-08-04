@@ -134,3 +134,4 @@ src/data/source/*.csv
 
 # Pycharm
 .idea/
+.vscode/
