@@ -1,5 +1,6 @@
 from torch.optim import optimizer as optim
-from src.data import Dataset
+import numpy as np
+import time
 
 
 class Net:
@@ -21,6 +22,7 @@ class Net:
         self.weights_train = None
         self.loss_train = None
         self.loss_validation = None
+        self.hist = None
 
     def train(self, epochs: int, data, validation_split: float, verbosity_interval: int = 1):
         """
@@ -34,14 +36,20 @@ class Net:
         n = int(x.shape[0] * (1 - validation_split))
         x_train, y_train = x[:n], y[:n]
         x_validation, y_validation = x[n:], x[n:]
+
+        self.hist = np.zeros((epochs, 2))
+        start_time = time.time()
+
         for epoch in range(1, epochs + 1):
             # training
-            self.weights_train = self.model(x_train)
-            self.loss_train = self.loss_func(self.weights_train, y_train)
+            y_predicted_train = self.model(x_train)
+            self.loss_train = self.loss_func(y_predicted_train, y_train)
 
             # validation
-            weights_validation = self.model(x_validation)
-            self.loss_validation = self.loss_func(weights_validation, y_validation)
+            y_predicted_validation = self.model(x_validation)
+            self.loss_validation = self.loss_func(y_predicted_validation, y_validation)
+
+            self.hist[epoch] = np.array([self.loss_train, self.loss_validation])
 
             # optimizer
             self.optimizer.zero_grad()
@@ -52,6 +60,9 @@ class Net:
             if epoch == 1 or epoch % verbosity_interval == 0:
                 print(f"Epoch {epoch}, Training Loss: {self.loss_train.item():.4f}, " +
                       f"Validation Loss: {self.loss_validation:.4f}")
+
+        training_time = time.time() - start_time
+        print("Training time: {}".format(training_time))
 
     def evaluate(self, test_data):
         # TODO: implement this

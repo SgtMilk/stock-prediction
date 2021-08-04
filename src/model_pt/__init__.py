@@ -1,2 +1,2 @@
-from .generate_model import generate_model
+from .LSTMModel import LSTMModel
 from .Net import Net

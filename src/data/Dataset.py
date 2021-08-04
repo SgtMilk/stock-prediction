@@ -55,7 +55,7 @@ class Dataset:
 
         :param y_flag: defaults to false, will not ask if you want to overwrite older files
         """
-        destination_folder = os.path.abspath('./source')
+        destination_folder = os.path.abspath('./data/source')
         csv_columns = ['date', 'high', 'low', 'open',
                        'close', 'volume', 'adjclose', 'formatted_date']
 
@@ -84,9 +84,7 @@ class Dataset:
                                                                current_date),
                                                            time_interval='daily')
         except OSError:
-            print(Colors.FAIL + "\nCould not download data for " +
-                  self.code + " (it probably doesn't exist" + Colors.ENDC)
-            return None
+            raise NameError(f"\nCould not download data for {self.code} (it probably doesn't exist")
 
         prices = data[self.code]['prices']
 
@@ -156,7 +154,7 @@ class Dataset:
         :return: None if there is no data, otherwise the x and y train data
         """
 
-        if self.x or self.y is None:
+        if self.x.all() or self.y.all() is None:
             return None
         n = int(self.x.shape[0] * split)
         return self.x[n:], self.y[n:]
@@ -191,16 +189,16 @@ class Dataset:
         gpu = torch.cuda.is_available()
         if not torch.is_tensor(self.x) and self.x is not None:
             if gpu:
-                self.x = torch.from_numpy(self.x).to("cuda")
+                self.x = torch.from_numpy(self.x).float().to("cuda")
             else:
-                self.x = torch.from_numpy(self.x)
+                self.x = torch.from_numpy(self.x).float()
         if not torch.is_tensor(self.y) and self.y is not None:
             if gpu:
-                self.y = torch.from_numpy(self.y).to("cuda")
+                self.y = torch.from_numpy(self.y).float().to("cuda")
             else:
-                self.y = torch.from_numpy(self.y)
+                self.y = torch.from_numpy(self.y).float()
         if not torch.is_tensor(self.y_unscaled) and self.y_unscaled is not None:
             if gpu:
-                self.y_unscaled = torch.from_numpy(self.y_unscaled).to("cuda")
+                self.y_unscaled = torch.from_numpy(self.y_unscaled).float().to("cuda")
             else:
-                self.y_unscaled = torch.from_numpy(self.y_unscaled)
+                self.y_unscaled = torch.from_numpy(self.y_unscaled).float()

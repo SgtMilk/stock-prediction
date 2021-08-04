@@ -1,5 +1,5 @@
 import unittest
-from Dataset import Dataset, Mode
+from src.data import Dataset, Mode
 import warnings
 import numpy as np
 
