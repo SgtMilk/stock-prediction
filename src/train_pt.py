@@ -13,7 +13,7 @@ def train_stock(code: str, mode: int):
     """
     dataset = Dataset(code, mode=mode, y_flag=True)
     dataset.transform_to_torch()
-    model = GRUModel(6, 32, 3, 0.2, mode)
+    model = GRUModel(dataset.x.shape[-1], 32, 3, 0.2, mode)
     net = Net(Adam(model.parameters(), lr=0.01), MSELoss(reduction='mean'), model)
     net.train(100, dataset.get_train(), 0.1)
     net.evaluate_training()
