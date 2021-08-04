@@ -1,5 +1,6 @@
 from torch.optim import optimizer as optim
-from src.data import Dataset
+from src.data import Dataset, AggregateDataset
+from typing import Union
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -79,7 +80,7 @@ class Net:
 
         plt.show()
 
-    def evaluate(self, dataset: Dataset):
+    def evaluate(self, dataset: Union[Dataset, AggregateDataset]):
         """
         This function will evaluate the model and plot the results
         :param dataset: the dataset to evaluate
@@ -104,9 +105,8 @@ class Net:
 
         plt.gcf().set_size_inches(22, 15, forward=True)
 
-        plt.plot([value[-1] for value in y_unscaled][::-1], label='real')
-        plt.plot([value[-1]
-                  for value in unscaled_predicted][::-1], label='predicted')
+        plt.plot(y_unscaled[0][::-1], label='real')
+        plt.plot(unscaled_predicted[0][::-1], label='predicted')
 
         plt.legend(['Real', 'Predicted'])
 
