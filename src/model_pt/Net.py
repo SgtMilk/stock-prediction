@@ -1,4 +1,5 @@
 from torch.optim import optimizer as optim
+import torch
 from src.data import Dataset, AggregateDataset
 from typing import Union
 import numpy as np
@@ -21,6 +22,9 @@ class Net:
         self.optimizer = optimizer
         self.loss_func = loss_func
         self.model = model
+        gpu = torch.cuda.is_available()
+        if gpu:
+            self.model = self.model.to(device='cuda')
 
         self.weights_train = None
         self.loss_train = None
@@ -43,6 +47,9 @@ class Net:
         self.hist = np.zeros((epochs, 2))
         start_time = time.time()
 
+        lowest_validation_loss = None
+        temp_model = None
+
         for epoch in range(1, epochs + 1):
             # training
             y_predicted_train = self.model(x_train)
@@ -54,6 +61,10 @@ class Net:
 
             self.hist[epoch - 1] = np.array([self.loss_train, self.loss_validation])
 
+            if lowest_validation_loss is None or lowest_validation_loss > self.loss_validation:
+                temp_model = self.model
+                lowest_validation_loss = self.loss_validation
+
             # optimizer
             self.optimizer.zero_grad()
             self.loss_train.backward()
@@ -63,7 +74,7 @@ class Net:
             if epoch == 1 or epoch % verbosity_interval == 0:
                 print(f"Epoch {epoch}, Training Loss: {self.loss_train.item():.4f}, " +
                       f"Validation Loss: {self.loss_validation:.4f}")
-
+        self.model = temp_model
         training_time = time.time() - start_time
         print("Training time: {}".format(training_time))
 
@@ -89,8 +100,8 @@ class Net:
         predicted_y_test = self.model(x)
 
         # re-transforming to numpy
-        predicted_y_test = predicted_y_test.detach().numpy()
-        y_unscaled = y_unscaled.detach().numpy()
+        predicted_y_test = predicted_y_test.detach().cpu().numpy()
+        y_unscaled = y_unscaled.detach().cpu().numpy()
 
         unscaled_predicted = dataset.normalizer.inverse_transform(
             predicted_y_test)
@@ -105,8 +116,8 @@ class Net:
 
         plt.gcf().set_size_inches(22, 15, forward=True)
 
-        plt.plot(y_unscaled[0][::-1], label='real')
-        plt.plot(unscaled_predicted[0][::-1], label='predicted')
+        plt.plot(y_unscaled[0][::-1], label='real', marker='o')
+        plt.plot(unscaled_predicted[0][::-1], label='predicted', marker='o')
 
         plt.legend(['Real', 'Predicted'])
 

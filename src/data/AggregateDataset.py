@@ -77,14 +77,21 @@ class AggregateDataset:
         """
         Transforms all the class data to torch tensors
         """
+        gpu = torch.cuda.is_available()
         if not torch.is_tensor(self.x) and self.x is not None:
             self.x = torch.from_numpy(self.x).float()
+            if gpu:
+                self.x = self.x.to(device='cuda')
 
         if not torch.is_tensor(self.y) and self.y is not None:
             self.y = torch.from_numpy(self.y).float()
+            if gpu:
+                self.y = self.y.to(device='cuda')
 
         if not torch.is_tensor(self.y_unscaled) and self.y_unscaled is not None:
             self.y_unscaled = torch.from_numpy(self.y_unscaled).float()
+            if gpu:
+                self.y_unscaled = self.y_unscaled.to(device='cuda')
 
         for dataset in self.datasets:
             dataset.transform_to_torch()

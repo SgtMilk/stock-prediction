@@ -64,7 +64,8 @@ class Dataset:
 
         destination = os.path.join(destination_folder, self.code + '.csv')
         if y_flag and os.path.exists(destination):
-            os.remove(destination)
+            return None
+            # os.remove(destination)
 
         if not y_flag and os.path.exists(destination):
             response = input(Colors.OKBLUE +
@@ -77,7 +78,7 @@ class Dataset:
         current_stock = YahooFinancials(self.code)
 
         current_date = datetime.date.today()
-        initial_date = current_date - datetime.timedelta(days=365.24 * 5)
+        initial_date = current_date - datetime.timedelta(days=365.24 * 20)
         try:
             data = current_stock.get_historical_price_data(start_date=str(initial_date),
                                                            end_date=str(
@@ -93,7 +94,7 @@ class Dataset:
             writer.writeheader()
             for price in prices:
                 writer.writerow(price)
-        print(Colors.OKGREEN + "Data Downloaded!" + '\033[0m' + Colors.ENDC)
+        print(Colors.OKGREEN + f"{self.code} Data Downloaded!" + '\033[0m' + Colors.ENDC)
         return prices
 
     def build_dataset(self, data=None):
@@ -104,11 +105,11 @@ class Dataset:
         :return: x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
         """
         if data is None:
-            destination_folder = os.path.abspath('./source')
+            destination_folder = os.path.abspath('./data/source')
             file = os.path.join(destination_folder, self.code + '.csv')
 
             if not os.path.exists(file):
-                print(Colors.FAIL + "Data has not been downloaded for this stock code" + Colors.ENDC)
+                print(Colors.FAIL + f"Data has not been downloaded for this stock code ({self.code})" + Colors.ENDC)
                 return None
 
             data = pd.read_csv(file)
@@ -189,9 +190,15 @@ class Dataset:
         gpu = torch.cuda.is_available()
         if not torch.is_tensor(self.x) and self.x is not None:
             self.x = torch.from_numpy(self.x).float()
+            if gpu:
+                self.x = self.x.to(device='cuda')
 
         if not torch.is_tensor(self.y) and self.y is not None:
             self.y = torch.from_numpy(self.y).float()
+            if gpu:
+                self.y = self.y.to(device='cuda')
 
         if not torch.is_tensor(self.y_unscaled) and self.y_unscaled is not None:
             self.y_unscaled = torch.from_numpy(self.y_unscaled).float()
+            if gpu:
+                self.y_unscaled = self.y_unscaled.to(device='cuda')
