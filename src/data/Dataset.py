@@ -55,7 +55,7 @@ class Dataset:
 
         :param y_flag: defaults to false, will not ask if you want to overwrite older files
         """
-        destination_folder = os.path.abspath('./data/source')
+        destination_folder = os.path.abspath('../src/data/source')
         csv_columns = ['date', 'high', 'low', 'open',
                        'close', 'volume', 'adjclose', 'formatted_date']
 
@@ -104,7 +104,7 @@ class Dataset:
         :return: x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
         """
         if data is None:
-            destination_folder = os.path.abspath('./data/source')
+            destination_folder = os.path.abspath('../src/data/source')
             file = os.path.join(destination_folder, self.code + '.csv')
 
             if not os.path.exists(file):

@@ -1,6 +1,6 @@
-from data import Mode, AggregateDataset
-from hyperparameters import Train
-from model import Net
+from src.data import Mode, AggregateDataset
+from src.hyperparameters import Train
+from src.model import Net
 import torch
 
 
@@ -22,6 +22,7 @@ def train_stock(codes, mode: int):
     net.train(Train.epochs, dataset, Train.validation_split, Train.patience)
     net.evaluate_training()
     net.evaluate(dataset)
+    return net.model
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ class Net:
         self.hist = None
 
         # getting the right file name
-        destination_folder = os.path.abspath('./model/models')
+        destination_folder = os.path.abspath('../src/model/models')
         condition = False
         try:
             dataset.code
@@ -48,7 +48,7 @@ class Net:
         else:
             code_string = dataset.code
         current_date = str(datetime.date.today())
-        self.filepath = os.path.join(destination_folder, f"{code_string}{current_date}.hdf5")
+        self.filepath = os.path.join(destination_folder, f"{code_string}{dataset.mode}-{current_date}.hdf5")
 
     def train(self, epochs: int, dataset: Union[Dataset, AggregateDataset], validation_split: float, patience: int,
               verbosity_interval: int = 1):
