@@ -64,8 +64,7 @@ class Dataset:
 
         destination = os.path.join(destination_folder, self.code + '.csv')
         if y_flag and os.path.exists(destination):
-            return None
-            # os.remove(destination)
+            os.remove(destination)
 
         if not y_flag and os.path.exists(destination):
             response = input(Colors.OKBLUE +

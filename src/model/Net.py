@@ -5,6 +5,8 @@ from typing import Union
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import os
+import datetime
 
 
 class Net:
@@ -12,7 +14,7 @@ class Net:
     The Net class will build the model and train it.
     """
 
-    def __init__(self, optimizer: optim, loss_func, model):
+    def __init__(self, optimizer: optim, loss_func, model, dataset: Union[Dataset, AggregateDataset]):
         """
         The __init__ function will set all training parameters and generate the model
         :param optimizer: the training optimizer
@@ -31,15 +33,34 @@ class Net:
         self.loss_validation = None
         self.hist = None
 
-    def train(self, epochs: int, data, validation_split: float, verbosity_interval: int = 1):
+        # getting the right file name
+        destination_folder = os.path.abspath('./model/models')
+        condition = False
+        try:
+            dataset.code
+        except AttributeError:
+            condition = True
+
+        if condition:
+            code_string = ""
+            for i in dataset.datasets:
+                code_string += f"{i.code}-"
+        else:
+            code_string = dataset.code
+        current_date = str(datetime.date.today())
+        self.filepath = os.path.join(destination_folder, f"{code_string}{current_date}.hdf5")
+
+    def train(self, epochs: int, dataset: Union[Dataset, AggregateDataset], validation_split: float, patience: int,
+              verbosity_interval: int = 1):
         """
         The training loop for the net
+        :param patience: the number of epochs the validation loss doesn't improve before we stop training the model
         :param epochs: the number of epochs the training loop will run
-        :param data: the dataset's train data in (x, y) tuple format
+        :param dataset: the dataset
         :param validation_split: the split between validation and training data
         :param verbosity_interval: at which epoch interval there will be logging
         """
-        x, y = data
+        x, y = dataset.get_train()
         n = int(x.shape[0] * (1 - validation_split))
         x_train, y_train = x[:n], y[:n]
         x_validation, y_validation = x[n:], y[n:]
@@ -48,9 +69,14 @@ class Net:
         start_time = time.time()
 
         lowest_validation_loss = None
-        temp_model = None
+        patience_counter = 0
 
         for epoch in range(1, epochs + 1):
+            # finishing the training if the patience doesn't improve
+            if patience_counter >= patience:
+                break
+            patience += 1
+
             # training
             y_predicted_train = self.model(x_train)
             self.loss_train = self.loss_func(y_predicted_train, y_train)
@@ -62,7 +88,7 @@ class Net:
             self.hist[epoch - 1] = np.array([self.loss_train, self.loss_validation])
 
             if lowest_validation_loss is None or lowest_validation_loss > self.loss_validation:
-                temp_model = self.model
+                self.save()
                 lowest_validation_loss = self.loss_validation
 
             # optimizer
@@ -74,7 +100,7 @@ class Net:
             if epoch == 1 or epoch % verbosity_interval == 0:
                 print(f"Epoch {epoch}, Training Loss: {self.loss_train.item():.4f}, " +
                       f"Validation Loss: {self.loss_validation:.4f}")
-        self.model = temp_model
+        # self.load()
         training_time = time.time() - start_time
         print("Training time: {}".format(training_time))
 
@@ -122,4 +148,13 @@ class Net:
         plt.legend(['Real', 'Predicted'])
 
         plt.show()
+
+    def save(self):
+        """
+        This method will save the trained model according to the dataset's code(s) and the current date
+        """
+        torch.save(self.model.state_dict(), self.filepath)
+
+    def load(self):
+        self.model = torch.load(self.filepath)
 
