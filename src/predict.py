@@ -16,7 +16,7 @@ def predict(codes, mode: int, overwrite: bool = False):
     :return: predicted data
     """
     # getting the right file path
-    destination_folder = os.path.abspath('../src/model/models')
+    destination_folder = os.path.abspath('./src/model/models')
     code_string = ""
     for code in codes:
         code_string += f"{code}-"

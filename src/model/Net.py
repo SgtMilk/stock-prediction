@@ -34,7 +34,7 @@ class Net:
         self.hist = None
 
         # getting the right file name
-        destination_folder = os.path.abspath('../src/model/models')
+        destination_folder = os.path.abspath('./src/model/models')
         condition = False
         try:
             dataset.code
