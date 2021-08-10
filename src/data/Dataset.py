@@ -1,6 +1,6 @@
 import torch
 
-from src.utils.print_colors import Colors
+from src.utils import Colors, get_base_path
 from yahoofinancials import YahooFinancials
 from sklearn.preprocessing import MinMaxScaler
 import os
@@ -55,7 +55,7 @@ class Dataset:
 
         :param y_flag: defaults to false, will not ask if you want to overwrite older files
         """
-        destination_folder = os.path.abspath('./src/data/source')
+        destination_folder = os.path.abspath(os.path.join(get_base_path(), 'src/data/source'))
         csv_columns = ['date', 'high', 'low', 'open',
                        'close', 'volume', 'adjclose', 'formatted_date']
 
@@ -104,7 +104,7 @@ class Dataset:
         :return: x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
         """
         if data is None:
-            destination_folder = os.path.abspath('./src/data/source')
+            destination_folder = os.path.abspath(os.path.join(get_base_path(), 'src/data/source'))
             file = os.path.join(destination_folder, self.code + '.csv')
 
             if not os.path.exists(file):

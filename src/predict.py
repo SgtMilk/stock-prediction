@@ -1,6 +1,7 @@
 from src.hyperparameters import Train
 from src.data import AggregateDataset
 from src.model import Net
+from src.utils import get_base_path
 import numpy as np
 import datetime
 import os
@@ -16,7 +17,7 @@ def predict(codes, mode: int, overwrite: bool = False):
     :return: predicted data
     """
     # getting the right file path
-    destination_folder = os.path.abspath('./src/model/models')
+    destination_folder = os.path.abspath(os.path.join(get_base_path(), 'src/model/models'))
     code_string = ""
     for code in codes:
         code_string += f"{code}-"

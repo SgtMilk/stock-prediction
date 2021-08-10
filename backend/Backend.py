@@ -1,5 +1,6 @@
 from flask import Flask
 from src.predict import predict as predict_data
+import pandas_market_calendars as mcal
 from flask_cors import CORS
 import json
 import datetime
@@ -21,9 +22,18 @@ class Backend:
             returned_data = []
             if not isinstance(data, list):
                 data = [data]
+
+            # getting dates
+            nyse = mcal.get_calendar('NYSE')
+            num_days = len(data) * 2
+            if num_days < 6:
+                num_days = 6
+            current_date = datetime.date.today() + datetime.timedelta(days=1)
+            max_date = current_date + datetime.timedelta(days=num_days)
+            open_days = nyse.valid_days(start_date=str(current_date), end_date=str(max_date))
             for index, d in enumerate(data):
                 returned_data.append({
-                    "date": str(datetime.date.today() + datetime.timedelta(days=index)),
+                    "date": str(open_days[index]).split()[0],
                     "price": d
                 })
             return json.dumps(returned_data)
@@ -35,9 +45,18 @@ class Backend:
             returned_data = []
             if not isinstance(data, list):
                 data = [data]
+
+            # getting dates
+            nyse = mcal.get_calendar('NYSE')
+            num_days = len(data) * 2
+            if num_days < 6:
+                num_days = 6
+            current_date = datetime.date.today() + datetime.timedelta(days=1)
+            max_date = current_date + datetime.timedelta(days=num_days)
+            open_days = nyse.valid_days(start_date=str(current_date), end_date=str(max_date))
             for index, d in enumerate(data):
                 returned_data.append({
-                    "date": str(datetime.date.today() + datetime.timedelta(days=index)),
+                    "date": str(open_days[index]).split()[0],
                     "price": d
                 })
             return json.dumps(returned_data)
@@ -54,34 +73,30 @@ class Backend:
                     "mode": 22
                 },
                 {
-                    "name": "AAPL",
-                    "mode": 5
+                    "name": "GOOG",
+                    "mode": 22
                 },
                 {
-                    "name": "AMZN",
-                    "mode": 5
+                    "name": "TSLA",
+                    "mode": 22
                 },
                 {
-                    "name": "AAPL",
-                    "mode": 1
+                    "name": "^GSPC",
+                    "mode": 22
                 },
                 {
-                    "name": "AMZN",
-                    "mode": 1
+                    "name": "MSFT",
+                    "mode": 22
                 },
                 {
-                    "name": "AMZN",
-                    "mode": 1
-                },
-                {
-                    "name": "AMZN",
-                    "mode": 1
+                    "name": "FB",
+                    "mode": 22
                 },
             ]
             return json.dumps(portfolio_list)
 
     def run(self):
-        self.app.run(host='0.0.0.0', port=8000)
+        self.app.run(host='0.0.0.0', port=8000, threaded=False)
 
 
 if __name__ == '__main__':

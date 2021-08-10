@@ -1,6 +1,7 @@
 from torch.optim import optimizer as optim
 import torch
 from src.data import Dataset, AggregateDataset
+from src.utils import get_base_path
 from typing import Union
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,7 +35,7 @@ class Net:
         self.hist = None
 
         # getting the right file name
-        destination_folder = os.path.abspath('./src/model/models')
+        destination_folder = os.path.abspath(get_base_path() + 'src/model/models')
         condition = False
         try:
             dataset.code
@@ -42,13 +43,16 @@ class Net:
             condition = True
 
         if condition:
-            code_string = ""
-            for i in dataset.datasets:
-                code_string += f"{i.code}-"
+            if len(dataset.datasets) == 1:
+                code_string = dataset.datasets[0].code
+                current_date = str(datetime.date.today())
+                self.filepath = os.path.join(destination_folder, f"{code_string}{dataset.mode}-{current_date}.hdf5")
+            else:
+                self.filepath = os.path.join(destination_folder, f"model-{dataset.mode}.hdf5")
         else:
             code_string = dataset.code
-        current_date = str(datetime.date.today())
-        self.filepath = os.path.join(destination_folder, f"{code_string}{dataset.mode}-{current_date}.hdf5")
+            current_date = str(datetime.date.today())
+            self.filepath = os.path.join(destination_folder, f"{code_string}{dataset.mode}-{current_date}.hdf5")
 
     def train(self, epochs: int, dataset: Union[Dataset, AggregateDataset], validation_split: float, patience: int,
               verbosity_interval: int = 1):

@@ -1,4 +1,4 @@
-from src.data import Mode, AggregateDataset
+from src.data import Mode, AggregateDataset, get_stock_symbols
 from src.hyperparameters import Train
 from src.model import Net
 import torch
@@ -26,6 +26,6 @@ def train_stock(codes, mode: int):
 
 
 if __name__ == "__main__":
-    stock_symbols = ['AAPL']
+    stock_symbols = get_stock_symbols()
     torch.manual_seed(1)
     train_stock(stock_symbols, Mode.monthly)
