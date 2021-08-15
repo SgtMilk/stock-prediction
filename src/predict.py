@@ -1,5 +1,5 @@
 from src.hyperparameters import Train
-from src.data import AggregateDataset
+from src.data import Dataset
 from src.model import Net
 from src.utils import get_base_path
 import numpy as np
@@ -8,24 +8,21 @@ import os
 import torch
 
 
-def predict(codes, mode: int, overwrite: bool = False):
+def predict(code, mode: int, overwrite: bool = False):
     """
     predict callback
     :param overwrite: overwrite flag
-    :param codes: the codes to train to
+    :param code: the code to train to
     :param mode: Mode.daily, Mode.weekly, Mode.monthly
     :return: predicted data
     """
     # getting the right file path
     destination_folder = os.path.abspath(os.path.join(get_base_path(), 'src/model/models'))
-    code_string = ""
-    for code in codes:
-        code_string += f"{code}-"
     current_date = str(datetime.date.today())
-    filepath = os.path.join(destination_folder, f"{code_string}{mode}-{current_date}.hdf5")
+    filepath = os.path.join(destination_folder, f"{code}-{mode}-{current_date}.hdf5")
 
     # getting the data
-    dataset = AggregateDataset(codes, mode=mode, y_flag=True)
+    dataset = Dataset(code, mode=mode, y_flag=True)
     dataset.transform_to_torch()
 
     gpu = torch.cuda.is_available()
@@ -44,13 +41,12 @@ def predict(codes, mode: int, overwrite: bool = False):
     else:
         model.load_state_dict(torch.load(filepath))
 
-    data = torch.from_numpy(np.array([dataset.x[0].cpu().numpy()])).float()
+    data = torch.from_numpy(np.array(dataset.prediction_data)).float()
     if gpu:
         data = data.to(device='cuda')
-    predicted_y_test = model(data)
+    predicted = model(data)
 
     # re-transforming to numpy
-    predicted_y_test = predicted_y_test.detach().cpu().numpy()
+    predicted = predicted.detach().cpu().numpy()
 
-    return dataset.normalizer.inverse_transform(
-        predicted_y_test)
+    return dataset.normalizer.inverse_transform(predicted)

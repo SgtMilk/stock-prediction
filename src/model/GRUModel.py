@@ -35,7 +35,10 @@ class GRUModel(Module):
         :param x: input tensor
         :return: the predicted output
         """
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_().to(device='cuda')
+        gpu = torch.cuda.is_available()
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
+        if gpu:
+            h0 = h0.to(device='cuda')
         out, (hn) = self.gru(x, (h0.detach()))
         out = self.fc(out[:, -1, :])
         return out

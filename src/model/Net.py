@@ -146,8 +146,8 @@ class Net:
 
         plt.gcf().set_size_inches(22, 15, forward=True)
 
-        plt.plot(y_unscaled[0][::-1], label='real', marker='o')
-        plt.plot(unscaled_predicted[0][::-1], label='predicted', marker='o')
+        plt.plot(y_unscaled[-1], label='real', marker='o')
+        plt.plot(unscaled_predicted[-1], label='predicted', marker='o')
 
         plt.legend(['Real', 'Predicted'])
 

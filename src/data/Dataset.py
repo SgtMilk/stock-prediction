@@ -35,7 +35,7 @@ class Dataset:
         data = self.download_data(y_flag=y_flag)
 
         # initializing variables
-        self.x = self.y = self.y_unscaled = self.normalizer = None
+        self.x = self.y = self.y_unscaled = self.normalizer = self.prediction_data = None
 
         self.build_dataset(data)
 
@@ -120,21 +120,23 @@ class Dataset:
         del data['date']
         del data['formatted_date']
 
-        data = np.array(data[::-1])
+        data = np.array(data)
 
         # scaling
         scaler = MinMaxScaler()
         data_normalised = scaler.fit_transform(data)
 
         # array of arrays of the last 50 day's data
-        x_data = np.array([data_normalised[i + self.mode: i + self.mode + self.num_days]
-                           for i in range(len(data_normalised) - self.num_days - (self.mode - 1))])
+        x_data = np.array([data_normalised[i: i + self.num_days]
+                           for i in range(len(data_normalised) - self.num_days + 1)])
+        self.prediction_data = x_data[len(x_data) - self.mode:]
+        x_data = x_data[:len(x_data) - self.mode]
 
-        # array of arrays of the next 7 day's data scaled
-        y_data = np.array([data_normalised[i: i + self.mode, 3]
+        # resulting array of closing prices normalized
+        y_data = np.array([data_normalised[i + self.num_days: i + self.num_days + self.mode, 3]
                            for i in range(len(data_normalised) - self.num_days - (self.mode - 1))])
-        # array of arrays of the next 7 day's data unscaled
-        y_data_unscaled = np.array([data[i: i + self.mode, 3]
+        # resulting array of closing prices unscaled
+        y_data_unscaled = np.array([data[i + self.num_days: i + self.num_days + self.mode, 3]
                                     for i in range(len(data) - self.num_days - (self.mode - 1))])
 
         assert x_data.shape[0] == y_data.shape[0]

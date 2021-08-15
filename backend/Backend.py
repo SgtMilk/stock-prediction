@@ -17,7 +17,7 @@ class Backend:
 
         @self.app.route("/predict/<code>/<int:num_days>", methods=['GET'])
         def predict(code, num_days):
-            data = predict_data([code], num_days)
+            data = predict_data(code, num_days)
             data = data.squeeze().tolist()
             returned_data = []
             if not isinstance(data, list):
@@ -40,7 +40,7 @@ class Backend:
 
         @self.app.route("/predict/<code>/<int:num_days>/overwrite", methods=['GET'])
         def predict_overwrite(code, num_days):
-            data = predict_data([code], num_days, True)
+            data = predict_data(code, num_days, True)
             data = data.squeeze().tolist()
             returned_data = []
             if not isinstance(data, list):
