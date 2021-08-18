@@ -131,6 +131,7 @@ dmypy.json
 # Data
 src/data/source/*.csv
 *.hdf5
+backend/*.json
 
 # Pycharm
 .idea/

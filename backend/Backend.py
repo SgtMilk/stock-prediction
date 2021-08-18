@@ -39,17 +39,23 @@ class Backend:
 
             # getting dates
             nyse = mcal.get_calendar('NYSE')
-            num_days = len(data) * 2
-            if num_days < 6:
-                num_days = 6
+            num_days_dates = len(data) * 2
+            if num_days_dates < 6:
+                num_days_dates = 6
             current_date = datetime.date.today() + datetime.timedelta(days=1)
-            max_date = current_date + datetime.timedelta(days=num_days)
+            max_date = current_date + datetime.timedelta(days=num_days_dates)
             open_days = nyse.valid_days(start_date=str(current_date), end_date=str(max_date))
-            for index, d in enumerate(data):
-                returned_data.append({
-                    "date": str(open_days[index]).split()[0],
-                    "price": d
-                })
+            if num_days == 1:
+                returned_data = [{
+                    "date": str(open_days[0]).split()[0],
+                    "price": data
+                }]
+            else:
+                for index, d in enumerate(data[-1]):
+                    returned_data.append({
+                        "date": str(open_days[index]).split()[0],
+                        "price": d
+                    })
             return json.dumps(returned_data)
 
         @self.app.route("/portfolios", methods=['GET'])
@@ -141,14 +147,15 @@ class Backend:
                     stocks = data['stocks']
                     if portfolio_id in portfolios:
                         portfolio = portfolios[portfolio_id]
-                        for stock_id in portfolio['stocks']:
+                        stock_ids = portfolio['stocks']
+                        del portfolios[portfolio_id]
+                        for stock_id in stock_ids:
                             condition = False
                             for portfolio in portfolios.values():
                                 if stock_id in portfolio['stocks']:
                                     condition = True
                             if not condition and stock_id in stocks:
                                 del stocks[stock_id]
-                        del portfolios[portfolio_id]
                         with open(file, 'w') as outfile:
                             json.dump(data, outfile)
                         return json.dumps(data)
@@ -178,16 +185,18 @@ class Backend:
                         if stock_id in portfolios[portfolio_id]["stocks"] and stock_id in stocks:
                             return json.dumps(data), 208
                         else:
-                            if stock_id not in stocks:
-                                stocks[stock_id] = {
+                            new_stock = {
                                     "id": stock_id,
                                     "name": name,
                                     "mode": mode
                                 }
+                            if stock_id not in stocks:
+                                stocks[stock_id] = new_stock
                             if stock_id not in portfolios[portfolio_id]["stocks"]:
                                 portfolios[portfolio_id]["stocks"].append(stock_id)
                             with open(file, 'w') as outfile:
                                 json.dump(data, outfile)
+                            data['new_stock'] = new_stock
                             return json.dumps(data)
                     else:
                         abort(404)
