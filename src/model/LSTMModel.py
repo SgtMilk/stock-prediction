@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
+
 from torch.nn import LSTM, Linear, Module
 import torch
 
@@ -6,6 +8,7 @@ class LSTMModel(Module):
     """
     LSTM model
     """
+
     def __init__(self, input_dim, hidden_dim, num_layers, dropout, output_dim):
         """
         initiates the model
@@ -39,14 +42,13 @@ class LSTMModel(Module):
         :return: the predicted output
         """
         gpu = torch.cuda.is_available()
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
+        h0 = torch.zeros(self.num_layers, x.size(
+            0), self.hidden_dim).requires_grad_()
+        c0 = torch.zeros(self.num_layers, x.size(
+            0), self.hidden_dim).requires_grad_()
         if gpu:
             h0 = h0.to(device='cuda')
             c0 = c0.to(device='cuda')
         out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
         out = self.fc(out[:, -1, :])
         return out
-
-
-

@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
+
 from src.hyperparameters import Train
 from src.data import Dataset
 from src.model import Net
@@ -17,9 +19,11 @@ def predict(code, mode: int, overwrite: bool = False):
     :return: predicted data
     """
     # getting the right file path
-    destination_folder = os.path.abspath(os.path.join(get_base_path(), 'src/model/models'))
+    destination_folder = os.path.abspath(
+        os.path.join(get_base_path(), 'src/model/models'))
     current_date = str(datetime.date.today())
-    filepath = os.path.join(destination_folder, f"{code}-{mode}-{current_date}.hdf5")
+    filepath = os.path.join(
+        destination_folder, f"{code}-{mode}-{current_date}.hdf5")
 
     # getting the data
     dataset = Dataset(code, mode=mode, y_flag=True)
@@ -28,7 +32,8 @@ def predict(code, mode: int, overwrite: bool = False):
     gpu = torch.cuda.is_available()
 
     # getting our model and net
-    model = Train.model(dataset.x.shape[-1], Train.hidden_dim, Train.num_dim, Train.dropout, mode)
+    model = Train.model(
+        dataset.x.shape[-1], Train.hidden_dim, Train.num_dim, Train.dropout, mode)
 
     if gpu:
         model.to('cuda')
@@ -36,7 +41,8 @@ def predict(code, mode: int, overwrite: bool = False):
     if not os.path.exists(filepath) or overwrite:
         net = Net(Train.optimizer(model.parameters(), lr=Train.learning_rate), Train.loss(reduction='mean'), model,
                   dataset)
-        net.train(Train.epochs, dataset, Train.validation_split, Train.patience)
+        net.train(Train.epochs, dataset,
+                  Train.validation_split, Train.patience)
         model = net.model
     else:
         model.load_state_dict(torch.load(filepath))

@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
+
 from backend import Backend
 
 if __name__ == "__main__":

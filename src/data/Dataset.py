@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
+
 import torch
 
 from src.utils import Colors, get_base_path
@@ -19,7 +21,7 @@ class Mode:
 class Dataset:
     """collects data for a stock"""
 
-    def __init__(self, code: str, mode: int, num_days: int = 50, y_flag: bool = False) -> None:
+    def __init__(self, code: str, mode: int, num_days: int = 50, y_flag: bool = False, no_download=False) -> None:
         """
         __init__ initiates the dataset with a mode and a stock code.
         It also downloads the dataset from the past 5 years and stocks it in ./source
@@ -32,7 +34,10 @@ class Dataset:
         self.num_days = num_days
 
         # downloading data and putting it in a .csv file
-        data = self.download_data(y_flag=y_flag)
+        if not no_download:
+            data = self.download_data(y_flag=y_flag)
+        else:
+            data = None
 
         # initializing variables
         self.x = self.y = self.y_unscaled = self.normalizer = self.prediction_data = None
@@ -55,7 +60,8 @@ class Dataset:
 
         :param y_flag: defaults to false, will not ask if you want to overwrite older files
         """
-        destination_folder = os.path.abspath(os.path.join(get_base_path(), 'src/data/source'))
+        destination_folder = os.path.abspath(
+            os.path.join(get_base_path(), 'src/data/source'))
         csv_columns = ['date', 'high', 'low', 'open',
                        'close', 'volume', 'adjclose', 'formatted_date']
 
@@ -84,7 +90,8 @@ class Dataset:
                                                                current_date),
                                                            time_interval='daily')
         except OSError:
-            raise NameError(f"\nCould not download data for {self.code} (it probably doesn't exist")
+            raise NameError(
+                f"\nCould not download data for {self.code} (it probably doesn't exist")
 
         prices = data[self.code]['prices']
 
@@ -93,7 +100,8 @@ class Dataset:
             writer.writeheader()
             for price in prices:
                 writer.writerow(price)
-        print(Colors.OKGREEN + f"{self.code} Data Downloaded!" + '\033[0m' + Colors.ENDC)
+        print(Colors.OKGREEN +
+              f"{self.code} Data Downloaded!" + '\033[0m' + Colors.ENDC)
         return prices
 
     def build_dataset(self, data=None):
@@ -104,11 +112,13 @@ class Dataset:
         :return: x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
         """
         if data is None:
-            destination_folder = os.path.abspath(os.path.join(get_base_path(), 'src/data/source'))
+            destination_folder = os.path.abspath(
+                os.path.join(get_base_path(), 'src/data/source'))
             file = os.path.join(destination_folder, self.code + '.csv')
 
             if not os.path.exists(file):
-                print(Colors.FAIL + f"Data has not been downloaded for this stock code ({self.code})" + Colors.ENDC)
+                print(
+                    Colors.FAIL + f"Data has not been downloaded for this stock code ({self.code})" + Colors.ENDC)
                 return None
 
             data = pd.read_csv(file)
@@ -168,10 +178,10 @@ class Dataset:
         :return: None if there is no data, otherwise the x and y_unscaled testing data
         """
 
-        if self.x.all() or self.y_unscaled.all() is None:
+        if self.x.all() or self.y.all() or self.y_unscaled.all() is None:
             return None
         n = int(self.x.shape[0] * split)
-        return self.x[:n], self.y_unscaled[:n]
+        return self.x[:n], self.y[:n], self.y_unscaled[:n]
 
     def transform_to_numpy(self):
         """

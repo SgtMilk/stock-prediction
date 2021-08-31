@@ -1,17 +1,27 @@
+# Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
+
+import numpy as np
 from flask import Flask, abort
-from src.predict import predict as predict_data
+from src.hyperparameters import Train
 from src.utils import get_base_path
+from src.data import Mode, Dataset
 import pandas_market_calendars as mcal
 from flask_cors import CORS
 from hashlib import sha256
 import json
 import datetime
 import os
+import torch
 import sys
 
 
 class Backend:
     def __init__(self):
+        # creating the models
+        self.model_daily = load_model(1)
+        self.model_weekly = load_model(5)
+        self.model_monthly = load_model(22)
+
         self.app = Flask(__name__)
         CORS(self.app)
 
@@ -31,7 +41,9 @@ class Backend:
             :param num_days: the number of days to predict
             :return: the prediction data
             """
-            data = predict_data(code, num_days)
+            data = self.predict_data(code, num_days)
+            if data is None:
+                abort(404)
             data = data.squeeze().tolist()
             returned_data = []
             if not isinstance(data, list):
@@ -44,7 +56,8 @@ class Backend:
                 num_days_dates = 6
             current_date = datetime.date.today() + datetime.timedelta(days=1)
             max_date = current_date + datetime.timedelta(days=num_days_dates)
-            open_days = nyse.valid_days(start_date=str(current_date), end_date=str(max_date))
+            open_days = nyse.valid_days(start_date=str(
+                current_date), end_date=str(max_date))
             if num_days == 1:
                 returned_data = [{
                     "date": str(open_days[0]).split()[0],
@@ -65,7 +78,8 @@ class Backend:
             If no portfolios data exists, will return a 404 code
             :return: the portfolio data
             """
-            file = os.path.join(get_base_path(), "backend/data/portfolios.json")
+            file = os.path.join(
+                get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
                 with open(file) as json_file:
                     data = json.load(json_file)
@@ -80,7 +94,8 @@ class Backend:
             :param portfolio_id: portfolio's id
             :return: the portfolio data
             """
-            file = os.path.join(get_base_path(), "backend/data/portfolios.json")
+            file = os.path.join(
+                get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
                 with open(file) as json_file:
                     data = json.load(json_file)
@@ -100,7 +115,8 @@ class Backend:
             :param name: the portfolio's name
             :return: all backend portfolios
             """
-            file = os.path.join(get_base_path(), "backend/data/portfolios.json")
+            file = os.path.join(
+                get_base_path(), "backend/data/portfolios.json")
             portfolio_id = str(sha256(name.encode('utf-8')).hexdigest())
             if os.path.exists(file):
                 with open(file) as json_file:
@@ -139,7 +155,8 @@ class Backend:
             :param portfolio_id: portfolio's id
             :return: the portfolio data
             """
-            file = os.path.join(get_base_path(), "backend/data/portfolios.json")
+            file = os.path.join(
+                get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
                 with open(file) as json_file:
                     data = json.load(json_file)
@@ -174,26 +191,29 @@ class Backend:
             :param mode: the number of predicted days wanted
             :return: the whole portfolios data
             """
-            file = os.path.join(get_base_path(), "backend/data/portfolios.json")
+            file = os.path.join(
+                get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
                 with open(file) as json_file:
                     data = json.load(json_file)
                     portfolios = data['portfolios']
                     stocks = data['stocks']
                     if portfolio_id in portfolios:
-                        stock_id = str(sha256((name + str(mode)).encode('utf-8')).hexdigest())
+                        stock_id = str(
+                            sha256((name + str(mode)).encode('utf-8')).hexdigest())
                         if stock_id in portfolios[portfolio_id]["stocks"] and stock_id in stocks:
                             return json.dumps(data), 208
                         else:
                             new_stock = {
-                                    "id": stock_id,
-                                    "name": name,
-                                    "mode": mode
-                                }
+                                "id": stock_id,
+                                "name": name,
+                                "mode": mode
+                            }
                             if stock_id not in stocks:
                                 stocks[stock_id] = new_stock
                             if stock_id not in portfolios[portfolio_id]["stocks"]:
-                                portfolios[portfolio_id]["stocks"].append(stock_id)
+                                portfolios[portfolio_id]["stocks"].append(
+                                    stock_id)
                             with open(file, 'w') as outfile:
                                 json.dump(data, outfile)
                             data['new_stock'] = new_stock
@@ -212,7 +232,8 @@ class Backend:
             :param stock_id: the stock's id
             :return: the whole portfolios data
             """
-            file = os.path.join(get_base_path(), "backend/data/portfolios.json")
+            file = os.path.join(
+                get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
                 with open(file) as json_file:
                     data = json.load(json_file)
@@ -241,6 +262,62 @@ class Backend:
 
     def run(self):
         self.app.run(host='0.0.0.0', port=8000, threaded=False)
+
+    def predict_data(self, code: str, num_days):
+        """
+        Predicts stock prices for the next num_days days
+        :param code: the stock's code
+        :param num_days: the number of days to predict for
+        :return: None if the model cannot be found, otherwise predicted stock data
+        """
+        # get the data and model
+        dataset = Dataset(code, mode=num_days, y_flag=True)
+        dataset.transform_to_torch()
+        if num_days == 1:
+            model = self.model_daily
+        elif num_days == 5:
+            model = self.model_weekly
+        elif num_days == 22:
+            model = self.model_monthly
+        else:
+            return None
+        if model is None:
+            return None
+
+        # predict
+        data = torch.from_numpy(np.array(dataset.prediction_data)).float()
+        if torch.cuda.is_available():
+            data = data.to(device='cuda')
+        with torch.no_grad():
+            predicted = model(data)
+
+        # re-transforming to numpy
+        predicted = predicted.detach().cpu().numpy()
+        return predicted
+        # return dataset.normalizer.inverse_transform(predicted)
+
+
+def load_model(num_days: int):
+    """
+    Will load a model from the number of days it has been trained for
+    :param num_days: the number of days the model has been trained for
+    :return: the model
+    """
+    model = Train.model(6, Train.hidden_dim, Train.num_dim,
+                        Train.dropout, num_days)
+
+    # if we have a gpu available, we store the models there
+    gpu = torch.cuda.is_available()
+    if gpu:
+        model.to('cuda')
+    file = os.path.abspath(os.path.join(
+        get_base_path(), f'src/model/models/model-{num_days}.hdf5'))
+    print(file)
+    if not os.path.exists(file):
+        return None
+    model.load_state_dict(torch.load(file))
+    model.eval()
+    return model
 
 
 if __name__ == '__main__':

@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
+
 class Colors:
     """
     This class incorporates color codes for printing to console

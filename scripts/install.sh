@@ -1,1 +1,0 @@
-sudo pip3 install torch torchvision torchaudio pandas numpy yahoofinancials sklearn matplotlib flask pandas_market_calendars flask_cors

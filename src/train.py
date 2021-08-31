@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
+
 from src.data import Mode, AggregateDataset, get_stock_symbols
 from src.hyperparameters import Train
 from src.model import Net
@@ -11,12 +13,14 @@ def train_stock(codes, mode: int):
     :param mode: Mode.daily, Mode.weekly, Mode.monthly
     """
     # getting the data
-    dataset = AggregateDataset(codes, mode=mode, y_flag=True)
+    dataset = AggregateDataset(codes, mode=mode, y_flag=True, no_download=True)
     dataset.transform_to_torch()
 
     # getting our model and net
-    model = Train.model(dataset.x.shape[-1], Train.hidden_dim, Train.num_dim, Train.dropout, mode)
-    net = Net(Train.optimizer(model.parameters(), lr=Train.learning_rate), Train.loss(reduction='mean'), model, dataset)
+    model = Train.model(
+        dataset.x.shape[-1], Train.hidden_dim, Train.num_dim, Train.dropout, mode)
+    net = Net(Train.optimizer(model.parameters(), lr=Train.learning_rate),
+              Train.loss(reduction='mean'), model, dataset)
 
     # training and evaluating our model
     net.train(Train.epochs, dataset, Train.validation_split, Train.patience)
@@ -26,6 +30,6 @@ def train_stock(codes, mode: int):
 
 
 if __name__ == "__main__":
-    stock_symbols = ['AAPL']
+    stock_symbols = ["AAPL"]
     torch.manual_seed(1)
     train_stock(stock_symbols, Mode.monthly)

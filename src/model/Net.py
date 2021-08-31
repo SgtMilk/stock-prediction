@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
+
 from torch.optim import optimizer as optim
 import torch
 from src.data import Dataset, AggregateDataset
@@ -35,24 +37,25 @@ class Net:
         self.hist = None
 
         # getting the right file name
-        destination_folder = os.path.abspath(get_base_path() + 'src/model/models')
+        destination_folder = os.path.abspath(
+            get_base_path() + 'src/model/models')
         condition = False
         try:
             dataset.code
         except AttributeError:
             condition = True
 
-        if condition:
-            if len(dataset.datasets) == 1:
-                code_string = dataset.datasets[0].code
-                current_date = str(datetime.date.today())
-                self.filepath = os.path.join(destination_folder, f"{code_string}{dataset.mode}-{current_date}.hdf5")
-            else:
-                self.filepath = os.path.join(destination_folder, f"model-{dataset.mode}.hdf5")
+        if condition and len(dataset.datasets) != 1:
+            self.filepath = os.path.join(
+                destination_folder, f"model-{dataset.mode}.hdf5")
         else:
-            code_string = dataset.code
+            if condition:
+                code_string = dataset.datasets[0].code
+            else:
+                code_string = dataset.code
             current_date = str(datetime.date.today())
-            self.filepath = os.path.join(destination_folder, f"{code_string}{dataset.mode}-{current_date}.hdf5")
+            self.filepath = os.path.join(
+                destination_folder, f"{code_string}{dataset.mode}-{current_date}.hdf5")
 
     def train(self, epochs: int, dataset: Union[Dataset, AggregateDataset], validation_split: float, patience: int,
               verbosity_interval: int = 1):
@@ -87,9 +90,11 @@ class Net:
 
             # validation
             y_predicted_validation = self.model(x_validation)
-            self.loss_validation = self.loss_func(y_predicted_validation, y_validation)
+            self.loss_validation = self.loss_func(
+                y_predicted_validation, y_validation)
 
-            self.hist[epoch - 1] = np.array([self.loss_train, self.loss_validation])
+            self.hist[epoch -
+                      1] = np.array([self.loss_train, self.loss_validation])
 
             if lowest_validation_loss is None or lowest_validation_loss > self.loss_validation:
                 self.save()
@@ -102,8 +107,8 @@ class Net:
 
             # logging losses
             if epoch == 1 or epoch % verbosity_interval == 0:
-                print(f"Epoch {epoch}, Training Loss: {self.loss_train.item():.4f}, " +
-                      f"Validation Loss: {self.loss_validation:.4f}")
+                print(f"Epoch {epoch}, Training Loss: {self.loss_train.item()}, " +
+                      f"Validation Loss: {self.loss_validation}")
         # self.load()
         training_time = time.time() - start_time
         print("Training time: {}".format(training_time))
@@ -126,11 +131,12 @@ class Net:
         This function will evaluate the model and plot the results
         :param dataset: the dataset to evaluate
         """
-        x, y_unscaled = dataset.get_test()
+        x, y, y_unscaled = dataset.get_test()
         predicted_y_test = self.model(x)
 
         # re-transforming to numpy
         predicted_y_test = predicted_y_test.detach().cpu().numpy()
+        y = y.detach().cpu().numpy()
         y_unscaled = y_unscaled.detach().cpu().numpy()
 
         unscaled_predicted = dataset.normalizer.inverse_transform(
@@ -139,15 +145,20 @@ class Net:
         assert predicted_y_test.shape == unscaled_predicted.shape
         assert predicted_y_test.shape == y_unscaled.shape
 
+        real_mse = np.mean(np.square(y - predicted_y_test))
+        scaled_mse = real_mse / (np.max(y) -
+                                 np.min(y)) * 100
+        print(f"scaled_mse_y: {scaled_mse}")
+
         real_mse = np.mean(np.square(y_unscaled - unscaled_predicted))
         scaled_mse = real_mse / (np.max(y_unscaled) -
                                  np.min(y_unscaled)) * 100
-        print(scaled_mse)
+        print(f"scaled_mse_u_unscaled: {scaled_mse}")
 
         plt.gcf().set_size_inches(22, 15, forward=True)
 
-        plt.plot(y_unscaled[-1], label='real', marker='o')
-        plt.plot(unscaled_predicted[-1], label='predicted', marker='o')
+        plt.plot(y[-1], label='real', marker='o')
+        plt.plot(predicted_y_test[-1], label='predicted', marker='o')
 
         plt.legend(['Real', 'Predicted'])
 
@@ -161,4 +172,3 @@ class Net:
 
     def load(self):
         self.model = torch.load(self.filepath)
-

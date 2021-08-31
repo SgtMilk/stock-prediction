@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
+
 from .Dataset import Dataset, Mode
 from .AggregateDataset import AggregateDataset
 from .data_testing import TestDataset

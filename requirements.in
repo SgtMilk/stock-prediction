@@ -1,0 +1,11 @@
+torch
+torchvision
+torchaudio
+pandas
+numpy
+yahoofinancials
+sklearn
+matplotlib
+flask
+flask_cors
+pandas_market_calendars
