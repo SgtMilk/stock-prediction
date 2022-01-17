@@ -1,9 +1,8 @@
 # Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
 
-from src.data import Mode, AggregateDataset, get_stock_symbols
+from src.data import AggregateDataset
 from src.hyperparameters import Train
 from src.model import Net
-import torch
 
 
 def train_stock(codes, mode: int):
@@ -27,9 +26,3 @@ def train_stock(codes, mode: int):
     net.evaluate_training()
     net.evaluate(dataset)
     return net.model
-
-
-if __name__ == "__main__":
-    stock_symbols = ["AAPL"]
-    torch.manual_seed(1)
-    train_stock(stock_symbols, Mode.monthly)

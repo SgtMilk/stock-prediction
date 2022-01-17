@@ -1,0 +1,18 @@
+{
+  "name": "Stock Prediction Backend",
+  "dockerFile": "Dockerfile",
+  "build": {
+    "args": {
+      "IMAGE_TYPE": "-gpu"
+    }
+  },
+  "settings": {
+    "C_Cpp.clang_format_style": "BasedOnStyle: Google",
+    "C_Cpp.default.includePath": ["${workspcaceFolder}/**"]
+  },
+  "extensions": ["ms-python.python", "ms-vscode.cpptools"],
+  "runArgs": ["--gpus=all"],
+  "containerEnv": { "DISPLAY": "${localEnv:DISPLAY}" },
+  "remoteUser": "root",
+  "postCreateCommand": "source project/bin/activate && pip install -r requirements.txt"
+}

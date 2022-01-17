@@ -85,25 +85,27 @@ class Net:
             patience += 1
 
             # training
-            y_predicted_train = self.model(x_train)
-            self.loss_train = self.loss_func(y_predicted_train, y_train)
+            self.optimizer.zero_grad()
+            self.model.train()
+            with torch.set_grad_enabled(True):
+                y_predicted_train = self.model(x_train)
+                self.loss_train = self.loss_func(y_predicted_train, y_train)
+
+                self.loss_train.backward()
+                self.optimizer.step()
 
             # validation
-            y_predicted_validation = self.model(x_validation)
-            self.loss_validation = self.loss_func(
-                y_predicted_validation, y_validation)
+            self.optimizer.zero_grad()
+            self.model.eval()
+            with torch.set_grad_enabled(False):
+                y_predicted_validation = self.model(x_validation)
+                self.loss_validation = self.loss_func(y_predicted_validation, y_validation)
 
-            self.hist[epoch -
-                      1] = np.array([self.loss_train, self.loss_validation])
+            self.hist[epoch - 1] = np.array([self.loss_train.cpu().detach().numpy(), self.loss_validation.cpu().detach().numpy()])
 
             if lowest_validation_loss is None or lowest_validation_loss > self.loss_validation:
                 self.save()
                 lowest_validation_loss = self.loss_validation
-
-            # optimizer
-            self.optimizer.zero_grad()
-            self.loss_train.backward()
-            self.optimizer.step()
 
             # logging losses
             if epoch == 1 or epoch % verbosity_interval == 0:
