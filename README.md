@@ -22,6 +22,8 @@ The model-training code is all in the `./src` folder.
 If a helper function has to do with data or cleaning that data, it is situated in the `./src/data` folder.
 If a helper function has anything to do with the pytorch model, it is situated in the `./src/model` folder.
 
+To use Tensorboard alonside your training, run `tensorboard --logdir=runs` to run a tensorboard server.
+
 ## Note to the user
 
 The backend services included in this repo are not scalable and were not designed to be so. I would strongly advise to write your own backend services if you want to use this in a large-scale system (the database is a json file 🙂️)

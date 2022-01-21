@@ -10,7 +10,7 @@ import os
 import torch
 
 
-def predict(code, mode: int, overwrite: bool = False):
+def predict_stock(code, mode: int, overwrite: bool = False):
     """
     predict callback
     :param overwrite: overwrite flag
@@ -21,9 +21,8 @@ def predict(code, mode: int, overwrite: bool = False):
     # getting the right file path
     destination_folder = os.path.abspath(
         os.path.join(get_base_path(), 'src/model/models'))
-    current_date = str(datetime.date.today())
     filepath = os.path.join(
-        destination_folder, f"{code}-{mode}-{current_date}.hdf5")
+        destination_folder, f"model-{str(mode)}.hdf5")
 
     # getting the data
     dataset = Dataset(code, mode=mode, y_flag=True)

@@ -3,6 +3,7 @@
 from torch.optim import optimizer as optim
 import torch
 from src.data import Dataset, AggregateDataset
+from torch.utils.tensorboard import SummaryWriter
 from src.utils import get_base_path
 from typing import Union
 import numpy as np
@@ -45,6 +46,8 @@ class Net:
         except AttributeError:
             condition = True
 
+        current_date = str(datetime.date.today())
+
         if condition and len(dataset.datasets) != 1:
             self.filepath = os.path.join(
                 destination_folder, f"model-{dataset.mode}.hdf5")
@@ -53,9 +56,8 @@ class Net:
                 code_string = dataset.datasets[0].code
             else:
                 code_string = dataset.code
-            current_date = str(datetime.date.today())
             self.filepath = os.path.join(
-                destination_folder, f"{code_string}{dataset.mode}-{current_date}.hdf5")
+                destination_folder, f"{code_string}-{dataset.mode}-{current_date}.hdf5")
 
     def train(self, epochs: int, dataset: Union[Dataset, AggregateDataset], validation_split: float, patience: int,
               verbosity_interval: int = 1):
@@ -67,6 +69,7 @@ class Net:
         :param validation_split: the split between validation and training data
         :param verbosity_interval: at which epoch interval there will be logging
         """
+        writer = SummaryWriter()
         x, y = dataset.get_train()
         n = int(x.shape[0] * (1 - validation_split))
         x_train, y_train = x[:n], y[:n]
@@ -108,6 +111,8 @@ class Net:
                 lowest_validation_loss = self.loss_validation
 
             # logging losses
+            writer.add_scalar('Loss/train', self.loss_train, epoch)
+            writer.add_scalar('Loss/validation', self.loss_validation, epoch)
             if epoch == 1 or epoch % verbosity_interval == 0:
                 print(f"Epoch {epoch}, Training Loss: {self.loss_train.item()}, " +
                       f"Validation Loss: {self.loss_validation}")

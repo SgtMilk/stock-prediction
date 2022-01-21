@@ -16,7 +16,7 @@ class Train:
     dropout = 0
 
     # training parameters
-    epochs = 100
+    epochs = 1000
     patience = epochs
     learning_rate = 0.001
     validation_split = 0.1

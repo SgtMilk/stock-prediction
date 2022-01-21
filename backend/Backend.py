@@ -13,6 +13,7 @@ import datetime
 import os
 import torch
 import sys
+from src import predict_stock
 
 
 class Backend:
@@ -41,7 +42,7 @@ class Backend:
             :param num_days: the number of days to predict
             :return: the prediction data
             """
-            data = self.predict_data(code, num_days)
+            data = predict_stock(code, num_days)
             if data is None:
                 abort(404)
             data = data.squeeze().tolist()

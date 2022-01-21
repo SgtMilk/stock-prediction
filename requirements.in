@@ -1,6 +1,7 @@
 torch
 torchvision
-torchaudio
+tensorboard
+tensorflow
 pandas
 numpy
 yahoofinancials
