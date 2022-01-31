@@ -10,3 +10,4 @@ matplotlib
 flask
 flask_cors
 pandas_market_calendars
+pillow>=9.0.0
