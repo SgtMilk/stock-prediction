@@ -66,6 +66,5 @@ def predict_stock(code, interval: int, num_days: int, overwrite: bool = False):
 
 def inverse_scaling(scaled_data, dataset):
     first_unscaling = dataset.inverse_transform(scaled_data)
-    print(f"${dataset.code}: ${dataset.y_unscaled.detach().cpu().numpy()[-1]}")
-    scaling_factor = dataset.y_unscaled.detach().cpu().numpy()[-1]/first_unscaling[0]
-    return first_unscaling * scaling_factor
+    scaling_factor = dataset.y_unscaled.detach().cpu().numpy()[-1] - first_unscaling[0]
+    return first_unscaling + scaling_factor
