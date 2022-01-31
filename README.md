@@ -2,7 +2,7 @@
 
 This repository is trying to generate estimates of future stock value.
 Yes, I know it is impossible to get accurate future values of the stock market because of it's volatility, but can you really blame me for trying? 😉️
-Like I said above, please do not assume that you will get accurate stock values out of this project and get rich this way because this path will probably make you lose a lot of money.
+Like I said above, please do not assume that you will get accurate stock values out of this project and this is a get-rich-quick scheme because this path will probably make you lose a lot of money.
 
 ## Required packages
 

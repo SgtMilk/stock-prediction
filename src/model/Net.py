@@ -1,6 +1,7 @@
 # Copyright (c) 2021 Alix Routhier-Lalonde. Licence included in root of package.
 
 from torch.optim import optimizer as optim
+from sklearn.metrics import mean_squared_error
 import torch
 from src.data import Dataset, AggregateDataset
 from torch.utils.tensorboard import SummaryWriter
@@ -50,14 +51,14 @@ class Net:
 
         if condition and len(dataset.datasets) != 1:
             self.filepath = os.path.join(
-                destination_folder, f"model-{dataset.mode}.hdf5")
+                destination_folder, f"model-{dataset.interval}.hdf5")
         else:
             if condition:
                 code_string = dataset.datasets[0].code
             else:
                 code_string = dataset.code
             self.filepath = os.path.join(
-                destination_folder, f"{code_string}-{dataset.mode}-{current_date}.hdf5")
+                destination_folder, f"{code_string}-{dataset.interval}-{current_date}.hdf5")
 
     def train(self, epochs: int, dataset: Union[Dataset, AggregateDataset], validation_split: float, patience: int,
               verbosity_interval: int = 1):
@@ -139,33 +140,25 @@ class Net:
         :param dataset: the dataset to evaluate
         """
         x, y, y_unscaled = dataset.get_test()
-        predicted_y_test = self.model(x)
+        predicted_y_test = np.squeeze(self.model(x))
 
         # re-transforming to numpy
         predicted_y_test = predicted_y_test.detach().cpu().numpy()
         y = y.detach().cpu().numpy()
         y_unscaled = y_unscaled.detach().cpu().numpy()
 
-        unscaled_predicted = dataset.normalizer.inverse_transform(
-            predicted_y_test)
+        unscaled_predicted = dataset.inverse_transform(predicted_y_test)
 
         assert predicted_y_test.shape == unscaled_predicted.shape
         assert predicted_y_test.shape == y_unscaled.shape
 
-        real_mse = np.mean(np.square(y - predicted_y_test))
-        scaled_mse = real_mse / (np.max(y) -
-                                 np.min(y)) * 100
+        scaled_mse = mean_squared_error(y, predicted_y_test)
         print(f"scaled_mse_y: {scaled_mse}")
-
-        real_mse = np.mean(np.square(y_unscaled - unscaled_predicted))
-        scaled_mse = real_mse / (np.max(y_unscaled) -
-                                 np.min(y_unscaled)) * 100
-        print(f"scaled_mse_u_unscaled: {scaled_mse}")
 
         plt.gcf().set_size_inches(22, 15, forward=True)
 
-        plt.plot(y[-1], label='real', marker='o')
-        plt.plot(predicted_y_test[-1], label='predicted', marker='o')
+        plt.plot(y, label='real', marker='o')
+        plt.plot(predicted_y_test, label='predicted', marker='o')
 
         plt.legend(['Real', 'Predicted'])
 

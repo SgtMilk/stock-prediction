@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 
 
-class Mode:
+class Interval:
     daily = 1
     weekly = 5
     monthly = 22
@@ -21,16 +21,17 @@ class Mode:
 class Dataset:
     """collects data for a stock"""
 
-    def __init__(self, code: str, mode: int, num_days: int = 50, y_flag: bool = False, no_download=False) -> None:
+    def __init__(self, code: str, interval: int, num_days: int = 50, y_flag: bool = False, no_download=False) -> None:
         """
-        __init__ initiates the dataset with a mode and a stock code.
+        __init__ initiates the dataset with a interval length and a stock code.
         It also downloads the dataset from the past 5 years and stocks it in ./source
 
         :param code: the stock's code
         :param num_days: the number of days back the data will be formatted to
+        :param interval: the interval in days between predictions
         """
         self.code = code
-        self.mode = mode
+        self.interval = interval
         self.num_days = num_days
 
         # downloading data and putting it in a .csv file
@@ -40,7 +41,7 @@ class Dataset:
             data = None
 
         # initializing variables
-        self.x = self.y = self.y_unscaled = self.normalizer = self.prediction_data = None
+        self.x = self.y = self.y_unscaled = self.normalizer = None
 
         self.build_dataset(data)
 
@@ -106,7 +107,7 @@ class Dataset:
 
     def build_dataset(self, data=None):
         """
-        build dataset will clean up the data according to a mode
+        build dataset will clean up the data according to an interval length
 
         :param data: optional, if it is None, it will fetch data in the according .csv file
         :return: x_train, y_train, y_unscaled_train, x_test, y_test, y_unscaled_test, normalizer
@@ -137,22 +138,22 @@ class Dataset:
         data_normalised = scaler.fit_transform(data)
 
         # array of arrays of the last 50 day's data
-        x_data = np.array([data_normalised[i: i + self.num_days]
-                           for i in range(len(data_normalised) - self.num_days + 1)])
-        self.prediction_data = x_data[len(x_data) - self.mode:]
-        x_data = x_data[:len(x_data) - self.mode]
+        x_data = np.array([np.array([np.array([x[3]]) for x in data_normalised[i: i + self.num_days]])
+                           for i in range(len(data_normalised) - self.num_days - self.interval + 1)])
 
         # resulting array of closing prices normalized
-        y_data = np.array([data_normalised[i + self.num_days: i + self.num_days + self.mode, 3]
-                           for i in range(len(data_normalised) - self.num_days - (self.mode - 1))])
+        y_data = np.array([data_normalised[i + self.num_days + self.interval - 1, 3]
+                           for i in range(len(data_normalised) - self.num_days - self.interval + 1)])
+
         # resulting array of closing prices unscaled
-        y_data_unscaled = np.array([data[i + self.num_days: i + self.num_days + self.mode, 3]
-                                    for i in range(len(data) - self.num_days - (self.mode - 1))])
+        y_data_unscaled = np.array([data[i + self.num_days + self.interval - 1, 3]
+                                    for i in range(len(data) - self.num_days - self.interval + 1)])
 
         assert x_data.shape[0] == y_data.shape[0]
+        assert y_data.shape == y_data_unscaled.shape
 
         normalizer = MinMaxScaler()
-        normalizer.fit(y_data_unscaled)
+        normalizer.fit(np.array(y_data_unscaled.reshape(-1, 1)))
 
         # setting class variables
         self.x, self.y, self.y_unscaled, self.normalizer = x_data, y_data, y_data_unscaled, normalizer
@@ -166,7 +167,7 @@ class Dataset:
         :return: None if there is no data, otherwise the x and y train data
         """
 
-        if self.x.all() or self.y.all() is None:
+        if self.x.any() is None or self.y.any() is None:
             return None
         n = int(self.x.shape[0] * split)
         return self.x[n:], self.y[n:]
@@ -178,7 +179,7 @@ class Dataset:
         :return: None if there is no data, otherwise the x and y_unscaled testing data
         """
 
-        if self.x.all() or self.y.all() or self.y_unscaled.all() is None:
+        if self.x.any() is None or self.y.any() is None or self.y_unscaled.any() is None:
             return None
         n = int(self.x.shape[0] * split)
         return self.x[:n], self.y[:n], self.y_unscaled[:n]
@@ -213,3 +214,11 @@ class Dataset:
             self.y_unscaled = torch.from_numpy(self.y_unscaled).float()
             if gpu:
                 self.y_unscaled = self.y_unscaled.to(device='cuda')
+
+    def inverse_transform(self, y_data):
+        """
+        Transforms back the data into unscaled data
+        :param y_data: the data to turn back in unscaled
+        :return: the scaled data
+        """
+        return np.squeeze(self.normalizer.inverse_transform(y_data.reshape(-1, 1)))

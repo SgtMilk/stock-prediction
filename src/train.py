@@ -5,19 +5,18 @@ from src.hyperparameters import Train
 from src.model import Net
 
 
-def train_stock(codes, mode: int):
+def train_stock(codes, interval: int):
     """
     Trains one stock
     :param codes: array of stock codes
-    :param mode: Mode.daily, Mode.weekly, Mode.monthly
+    :param interval: Interval.daily, Interval.weekly, Interval.monthly
     """
     # getting the data
-    dataset = AggregateDataset(codes, mode=mode, y_flag=True, no_download=True)
+    dataset = AggregateDataset(codes, interval=interval, y_flag=True, no_download=True)
     dataset.transform_to_torch()
 
     # getting our model and net
-    model = Train.model(
-        dataset.x.shape[-1], Train.hidden_dim, Train.num_dim, Train.dropout, mode)
+    model = Train.model(dataset.x.shape[-1], Train.hidden_dim, Train.num_dim, Train.dropout, 1)
     net = Net(Train.optimizer(model.parameters(), lr=Train.learning_rate),
               Train.loss(reduction='mean'), model, dataset)
 

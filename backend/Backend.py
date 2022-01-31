@@ -4,7 +4,7 @@ import numpy as np
 from flask import Flask, abort
 from src.hyperparameters import Train
 from src.utils import get_base_path
-from src.data import Mode, Dataset
+from src.data import Interval, Dataset
 import pandas_market_calendars as mcal
 from flask_cors import CORS
 from hashlib import sha256
@@ -19,9 +19,6 @@ from src import predict_stock
 class Backend:
     def __init__(self):
         # creating the models
-        self.model_daily = load_model(1)
-        self.model_weekly = load_model(5)
-        self.model_monthly = load_model(22)
 
         self.app = Flask(__name__)
         CORS(self.app)
@@ -34,15 +31,20 @@ class Backend:
             """
             return "Hello World!"
 
-        @self.app.route("/predict/<code>/<int:num_days>", methods=['GET'])
-        def predict(code, num_days):
+        @self.app.route("/predict/<code>/<int:interval>/<int:num_days>", methods=['GET'])
+        def predict(code, interval, num_days):
             """
             Predicts stock prices for the next `num_days`
             :param code: the stock code
+            :param interval: the interval of days between the prediction and current data
             :param num_days: the number of days to predict
             :return: the prediction data
             """
-            data = predict_stock(code, num_days)
+
+            if num_days >= 50:
+                abort(404)
+
+            data = predict_stock(code, interval, num_days)
             if data is None:
                 abort(404)
             data = data.squeeze().tolist()
@@ -52,24 +54,23 @@ class Backend:
 
             # getting dates
             nyse = mcal.get_calendar('NYSE')
-            num_days_dates = len(data) * 2
+            num_days_dates = len(data) * 4 * interval
             if num_days_dates < 6:
                 num_days_dates = 6
             current_date = datetime.date.today() + datetime.timedelta(days=1)
             max_date = current_date + datetime.timedelta(days=num_days_dates)
-            open_days = nyse.valid_days(start_date=str(
-                current_date), end_date=str(max_date))
-            if num_days == 1:
-                returned_data = [{
-                    "date": str(open_days[0]).split()[0],
-                    "price": data
-                }]
-            else:
-                for index, d in enumerate(data[-1]):
-                    returned_data.append({
-                        "date": str(open_days[index]).split()[0],
-                        "price": d
-                    })
+            open_days = nyse.valid_days(start_date=str(current_date), end_date=str(max_date))
+
+            returned_data.append({
+                "date": "today",
+                "price": data[0]
+            })
+
+            for index, d in enumerate(data[1:]):
+                returned_data.append({
+                    "date": str(open_days[((index + 1) * interval) - 1]).split()[0],
+                    "price": d
+                })
             return json.dumps(returned_data)
 
         @self.app.route("/portfolios", methods=['GET'])
@@ -181,15 +182,15 @@ class Backend:
                         abort(404)
             return abort(404)
 
-        @self.app.route("/portfolios/<portfolio_id>/stocks/<name>/<int:mode>", methods=['POST'])
-        def add_stock_to_portfolio(portfolio_id, name, mode):
+        @self.app.route("/portfolios/<portfolio_id>/stocks/<name>/<int:interval>/<int:num_days>", methods=['POST'])
+        def add_stock_to_portfolio(portfolio_id, name, interval, num_days):
             """
             Will add a stock to a portfolio.
             If the stock already exists in the portfolio, it will return all the current portfolios with a 208 code.
             If the portfolio cannot be found, a 404 code will be returned
             :param portfolio_id: the portfolio's id
             :param name: the stock's code
-            :param mode: the number of predicted days wanted
+            :param interval: the interval of days between the prediction and current data
             :return: the whole portfolios data
             """
             file = os.path.join(
@@ -201,14 +202,15 @@ class Backend:
                     stocks = data['stocks']
                     if portfolio_id in portfolios:
                         stock_id = str(
-                            sha256((name + str(mode)).encode('utf-8')).hexdigest())
+                            sha256((name + str(interval) + str(num_days)).encode('utf-8')).hexdigest())
                         if stock_id in portfolios[portfolio_id]["stocks"] and stock_id in stocks:
                             return json.dumps(data), 208
                         else:
                             new_stock = {
                                 "id": stock_id,
                                 "name": name,
-                                "mode": mode
+                                "interval": interval,
+                                "num_days": num_days
                             }
                             if stock_id not in stocks:
                                 stocks[stock_id] = new_stock
@@ -220,8 +222,10 @@ class Backend:
                             data['new_stock'] = new_stock
                             return json.dumps(data)
                     else:
+                        print('error 2')
                         abort(404)
             else:
+                print('error 1')
                 abort(404)
 
         @self.app.route("/portfolios/<portfolio_id>/stocks/<stock_id>", methods=['DELETE'])
@@ -272,7 +276,7 @@ class Backend:
         :return: None if the model cannot be found, otherwise predicted stock data
         """
         # get the data and model
-        dataset = Dataset(code, mode=num_days, y_flag=True)
+        dataset = Dataset(code, interval=num_days, y_flag=True)
         dataset.transform_to_torch()
         if num_days == 1:
             model = self.model_daily
@@ -304,7 +308,7 @@ def load_model(num_days: int):
     :param num_days: the number of days the model has been trained for
     :return: the model
     """
-    model = Train.model(6, Train.hidden_dim, Train.num_dim,
+    model = Train.model(1, Train.hidden_dim, Train.num_dim,
                         Train.dropout, num_days)
 
     # if we have a gpu available, we store the models there
