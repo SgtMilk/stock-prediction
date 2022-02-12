@@ -4,3 +4,5 @@ from .LSTMModel import LSTMModel
 from .GRUModel import GRUModel
 from .GRU_LSTM_Model import GRU_LSTM_Model
 from .Net import Net
+from .Generator import Generator
+from .Discriminator import Discriminator
