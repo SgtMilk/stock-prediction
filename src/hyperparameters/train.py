@@ -1,8 +1,8 @@
 # Copyright (c) 2022 Alix Routhier-Lalonde. Licence included in root of package.
 
-from src.model import GRUModel, LSTMModel, GRU_LSTM_Model
 from torch.nn import MSELoss
 from torch.optim import Adam
+from src.model import GRUModel
 
 
 class Train:

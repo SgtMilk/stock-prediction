@@ -5,6 +5,7 @@ from .Dataset import Dataset
 from sklearn.preprocessing import MinMaxScaler
 import torch
 import copy
+from src.utils import progress_bar
 
 
 class AggregateDataset:
@@ -12,30 +13,37 @@ class AggregateDataset:
     This class is to train the model with multiple stock codes
     """
 
-    def __init__(self, codes, interval: int, num_days: int = 50, y_flag=False, no_download=False):
+    def __init__(self, codes, interval: int, look_back: int = 100, pred_length: int = 30, y_flag=False, no_download=False):
         """
         Will create and aggregate all datasets
         :param codes: an array of stock codes
         :param interval: the interval of days between last real value and prediction
-        :param num_days: the number of look back days
+        :param look_back: the number of look back days
+        :param pred_length: the number of predicted days format
         :param y_flag: True if we don't ask to overwrite
         """
         self.interval = interval
-        self.num_days = num_days
+        self.look_back = look_back
+        self.pred_length = pred_length
         self.datasets = []
+        total = 0
 
-        for code in codes:
-            dataset = Dataset(code, interval, num_days=num_days,
+        for i, code in enumerate(codes):
+            dataset = Dataset(code, interval, look_back=look_back, pred_length=pred_length,
                               y_flag=y_flag, no_download=no_download)
+            if dataset is None:
+                continue
             self.datasets.append(dataset)
-            if code == codes[0]:
+            total += dataset.x.shape[0]
+            if i == 0:
                 self.x = dataset.x
                 self.y = dataset.y
                 self.y_unscaled = dataset.y_unscaled
             else:
-                np.concatenate((self.x, dataset.x))
-                np.concatenate((self.y, dataset.y))
-                np.concatenate((self.y_unscaled, dataset.y_unscaled))
+                self.x = np.concatenate((self.x, dataset.x))
+                self.y = np.concatenate((self.y, dataset.y))
+                self.y_unscaled = np.concatenate((self.y_unscaled, dataset.y_unscaled))
+            progress_bar(i + 1, len(codes), suffix="building the dataset...")
 
         self.normalizer = MinMaxScaler()
         self.normalizer.fit(self.y_unscaled.reshape(-1, 1))
@@ -110,4 +118,4 @@ class AggregateDataset:
         :param y_data: the data to turn back in unscaled
         :return: the scaled data
         """
-        return np.squeeze(self.normalizer.inverse_transform(y_data.reshape(-1, 1)))
+        return self.normalizer.inverse_transform(y_data)

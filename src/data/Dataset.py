@@ -21,18 +21,20 @@ class Interval:
 class Dataset:
     """collects data for a stock"""
 
-    def __init__(self, code: str, interval: int, num_days: int = 50, y_flag: bool = False, no_download=False) -> None:
+    def __init__(self, code: str, interval: int, look_back: int = 100, pred_length: int = 30, y_flag: bool = False, no_download=False) -> None:
         """
         __init__ initiates the dataset with a interval length and a stock code.
         It also downloads the dataset from the past 5 years and stocks it in ./source
 
         :param code: the stock's code
-        :param num_days: the number of days back the data will be formatted to
+        :param look_back: the number of days back the data will be formatted to
+        :param pred_length: the number of predicted days format
         :param interval: the interval in days between predictions
         """
         self.code = code
         self.interval = interval
-        self.num_days = num_days
+        self.look_back = look_back
+        self.pred_length = pred_length
 
         # downloading data and putting it in a .csv file
         if not no_download:
@@ -138,22 +140,27 @@ class Dataset:
         data_normalised = scaler.fit_transform(data)
 
         # array of arrays of the last 50 day's data
-        x_data = np.array([np.array([np.array([x[3]]) for x in data_normalised[i: i + self.num_days]])
-                           for i in range(len(data_normalised) - self.num_days - self.interval + 1)])
+        x_data = np.array([np.array([x[3] for x in data_normalised[i: i + self.look_back]])
+                           for i in range(len(data_normalised) - self.look_back - self.interval * self.pred_length + 1)])
 
         # resulting array of closing prices normalized
-        y_data = np.array([data_normalised[i + self.num_days + self.interval - 1, 3]
-                           for i in range(len(data_normalised) - self.num_days - self.interval + 1)])
+        y_data = np.array([[np.array([data_normalised[i + self.look_back + self.interval * j - 1, 3]])
+                            for j in range(self.pred_length)]
+                            for i in range(len(data_normalised) - self.look_back - self.interval * self.pred_length + 1)])
 
         # resulting array of closing prices unscaled
-        y_data_unscaled = np.array([data[i + self.num_days + self.interval - 1, 3]
-                                    for i in range(len(data) - self.num_days - self.interval + 1)])
+        y_data_unscaled = np.array([[data[i + self.look_back + self.interval * j - 1, 3] 
+                                    for j in range(self.pred_length)]
+                                    for i in range(len(data) - self.look_back - self.interval * self.pred_length + 1)])
 
         assert x_data.shape[0] == y_data.shape[0]
-        assert y_data.shape == y_data_unscaled.shape
+        assert y_data.shape[0] == y_data_unscaled.shape[0]
+        
+        if y_data.size == 0:
+            return None
 
         normalizer = MinMaxScaler()
-        normalizer.fit(np.array(y_data_unscaled.reshape(-1, 1)))
+        normalizer.fit(y_data_unscaled)
 
         # setting class variables
         self.x, self.y, self.y_unscaled, self.normalizer = x_data, y_data, y_data_unscaled, normalizer
@@ -221,4 +228,4 @@ class Dataset:
         :param y_data: the data to turn back in unscaled
         :return: the scaled data
         """
-        return np.squeeze(self.normalizer.inverse_transform(y_data.reshape(-1, 1)))
+        return self.normalizer.inverse_transform(y_data)
