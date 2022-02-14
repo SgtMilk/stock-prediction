@@ -3,6 +3,8 @@
 from typing import Union
 import time
 import os
+from sklearn import datasets
+from sklearn.preprocessing import MinMaxScaler
 from torch.optim import optimizer as optim
 from sklearn.metrics import mean_squared_error
 import torch
@@ -10,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import matplotlib.pyplot as plt
 from src.data import Dataset, AggregateDataset
-from src.utils import get_base_path
+from src.utils import get_base_path, progress_bar
 
 
 
@@ -98,35 +100,35 @@ class Net:
                     # Update the discriminator network #
                     ####################################
 
-                    # Train with all-real batch
                     self.discriminator.zero_grad()
-                    output_real_d = self.discriminator(y_train).view(-1)
+                    self.generator.zero_grad()
+
+                    # Train with all-real batch
+                    output_real_d = self.discriminator(torch.cat((x_train, y_train), 1)).view(-1)
                     error_real_d = self.criterion(output_real_d, real_labels)
                     error_real_d.backward()
                     d_x += output_real_d.mean().item()
 
                     # Train with all-fake (noise) batch
-                    noise = torch.randn(labels_size_d, x_train.shape[1], 1, device=self.device)
-                    fake = self.generator(noise)
-                    output_fake_d = self.discriminator(fake.detach()).view(-1)
+                    fake = self.generator(x_train)
+                    output_g = fake.view(-1)
+                    input_d = torch.cat((x_train, fake.detach()), 1)
+                    output_fake_d = self.discriminator(input_d).view(-1)
+                    
+                    error_fake_g = self.criterion(fake, y_train)
+                    error_fake_g.backward()
                     error_fake_d = self.criterion(output_fake_d, fake_labels)
                     error_fake_d.backward()
                     d_g1 += output_fake_d.mean().item()
+                    d_g2 += output_g.mean().item()
 
+                    error_g +=error_fake_g.item()
                     error_d += error_real_d.item() + error_fake_d.item()
+
+                    self.optimizer_g.step()
                     self.optimizer_d.step()
 
-                    ################################
-                    # Update the generator network #
-                    ################################
-
-                    self.generator.zero_grad()
-                    output_g = self.discriminator(fake).view(-1)
-                    error_temp_g = self.criterion(output_g, real_labels)
-                    error_temp_g.backward()
-                    error_g += error_temp_g.item()
-                    d_g2 += output_g.mean().item()
-                    self.optimizer_g.step()
+                    progress_bar(batch, self.dataset.batch_div, f"epoch {str(epoch)}/{str(epochs)}")
 
             # getting the averages
             error_g /= self.dataset.batch_div
@@ -164,20 +166,20 @@ class Net:
 
         plt.show()
 
-    def evaluate(self, dataset: Union[Dataset, AggregateDataset]):
+    def evaluate(self):
         """
         This function will evaluate the model and plot the results
         :param dataset: the dataset to evaluate
         """
-        x_test, y_test, y_unscaled_test = dataset.get_test()
-        predicted_y_test = np.squeeze(self.generator(x_test.unsqueeze(-1)))
+        x_test, y_test, y_unscaled_test = self.dataset.get_test()
+        predicted_y_test = np.squeeze(self.generator(x_test))
 
         # re-transforming to numpy
         predicted_y_test = predicted_y_test.detach().cpu().numpy()
         y_test = y_test.detach().cpu().numpy()
         y_unscaled = y_unscaled_test.detach().cpu().numpy()
 
-        unscaled_predicted = dataset.inverse_transform(predicted_y_test)
+        unscaled_predicted = self.dataset.inverse_transform(predicted_y_test)
 
         assert predicted_y_test.shape == unscaled_predicted.shape
         assert predicted_y_test.shape == y_unscaled.shape

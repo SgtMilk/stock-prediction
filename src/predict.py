@@ -40,7 +40,7 @@ def predict_stock(code, interval: int, num_days: int, overwrite: bool = False):
     generator.load_state_dict(torch.load(filepath))
 
     data = torch.from_numpy(np.array(dataset.x.detach().cpu().numpy())).float().to(device=GAN.device)
-    data = torch.unsqueeze(torch.unsqueeze(data[-1], dim=1), dim=0)
+    data = torch.unsqueeze(data[-1], dim=2)
     
     generator.eval()
     with torch.set_grad_enabled(False):

@@ -143,6 +143,7 @@ class Dataset:
         # array of arrays of the last 50 day's data
         x_data = np.array([np.array([x[3] for x in data_normalised[i: i + self.look_back]])
                            for i in range(len(data_normalised) - self.look_back - self.interval * self.pred_length + 1)])
+        x_data = np.expand_dims(x_data, axis=1)
 
         # resulting array of closing prices normalized
         y_data = np.array([[np.array([data_normalised[i + self.look_back + self.interval * j - 1, 3]])

@@ -35,15 +35,18 @@ class AggregateDataset:
         self.batch_div = batch_div
         self.split = split
         self.datasets = []
-        total = 0
 
         for i, code in enumerate(codes):
             dataset = Dataset(code, interval, look_back=look_back, pred_length=pred_length,
                               y_flag=y_flag, no_download=no_download)
             if dataset is None:
                 continue
+            if dataset.x is None or dataset.y is None or dataset.y_unscaled is None: 
+                continue
+            if dataset.x.ndim != 3 or dataset.y.ndim != 3 or dataset.y_unscaled.ndim != 2:
+                continue
+
             self.datasets.append(dataset)
-            total += dataset.x.shape[0]
             if i == 0:
                 self.x = dataset.x
                 self.y = dataset.y
@@ -71,8 +74,10 @@ class AggregateDataset:
         self.x_test, self.y_test, self.y_unscaled_test = self.x[n_split:], self.y[n_split:], self.y_unscaled[n_split:]
 
         # batching inputs to have cpu -> gpu
-        self.x_train = self.x_train.reshape((self.batch_div, self.batch_size, self.x_train.shape[1]))
+        self.x_train = self.x_train.reshape((self.batch_div, self.batch_size, self.look_back, 1))
         self.y_train = self.y_train.reshape((self.batch_div, self.batch_size, self.y_train.shape[1], self.y_train.shape[2]))
+
+        self.x_test = self.x_test.reshape(self.x_test.shape[0], self.look_back, 1)
 
     def get_train(self, index: int):
         """
