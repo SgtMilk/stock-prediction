@@ -2,6 +2,7 @@
 
 from torch.nn import BCELoss
 from torch.optim import Adam
+import torch
 from src.model import Generator, Discriminator
 
 
@@ -9,6 +10,8 @@ class GAN:
     """
     This class contains all the hyperparameters for training the GAN model
     """
+    # device = torch.device("cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # dataset parameters
     look_back = 100
@@ -23,9 +26,9 @@ class GAN:
     kernel_size = 1
 
     # training parameters
-    epochs = 1000
+    epochs = 100
     patience = epochs
-    learning_rate = 0.001
+    learning_rate = 0.0001
     loss = BCELoss(reduction='mean')
     optimizer_G = Adam
     optimizer_D = Adam

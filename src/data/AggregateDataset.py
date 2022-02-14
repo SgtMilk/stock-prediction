@@ -1,11 +1,11 @@
 # Copyright (c) 2022 Alix Routhier-Lalonde. Licence included in root of package.
 
 import numpy as np
-from .Dataset import Dataset
 from sklearn.preprocessing import MinMaxScaler
 import torch
-import copy
 from src.utils import progress_bar
+from src.utils import Colors
+from .Dataset import Dataset
 
 
 class AggregateDataset:
@@ -13,7 +13,7 @@ class AggregateDataset:
     This class is to train the model with multiple stock codes
     """
 
-    def __init__(self, codes, interval: int, look_back: int = 100, pred_length: int = 30, y_flag=False, no_download=False):
+    def __init__(self, device, codes, interval: int, look_back: int = 100, pred_length: int = 30, y_flag=False, no_download=False, batch_div:int = 1, split:float = 0.1):
         """
         Will create and aggregate all datasets
         :param codes: an array of stock codes
@@ -21,10 +21,19 @@ class AggregateDataset:
         :param look_back: the number of look back days
         :param pred_length: the number of predicted days format
         :param y_flag: True if we don't ask to overwrite
+        :param batch_div: the number of divisions in the data for the batches
+        :param split: the test/train split in the dataset
         """
+
+        if batch_div < 1:
+            raise NameError("You cannot have a batch division smaller than 1") from OSError
+
+        self.device = device
         self.interval = interval
         self.look_back = look_back
         self.pred_length = pred_length
+        self.batch_div = batch_div
+        self.split = split
         self.datasets = []
         total = 0
 
@@ -48,69 +57,38 @@ class AggregateDataset:
         self.normalizer = MinMaxScaler()
         self.normalizer.fit(self.y_unscaled.reshape(-1, 1))
 
-    def get_train(self, split: float = 0.1):
+        # transforming to torch tensors
+        self.x = torch.from_numpy(self.x).float()
+        self.y =torch.from_numpy(self.y).float()
+        self.y_unscaled = torch.from_numpy(self.y_unscaled).float()
+
+        # finding the right split
+        n_split = int(self.x.shape[0] * (1 - self.split))
+        n_split = n_split - n_split % self.batch_div
+        self.batch_size = int(n_split / self.batch_div)
+
+        self.x_train, self.y_train, self.y_unscaled_train = self.x[:n_split], self.y[:n_split], self.y_unscaled[:n_split]
+        self.x_test, self.y_test, self.y_unscaled_test = self.x[n_split:], self.y[n_split:], self.y_unscaled[n_split:]
+
+        # batching inputs to have cpu -> gpu
+        self.x_train = self.x_train.reshape((self.batch_div, self.batch_size, self.x_train.shape[1]))
+        self.y_train = self.y_train.reshape((self.batch_div, self.batch_size, self.y_train.shape[1], self.y_train.shape[2]))
+
+    def get_train(self, index: int):
         """
         getter for the training dataset
         :param split: percentage of test data in float format
         :return: None if there is no data, otherwise the x and y train data
         """
+        return self.x_train[index].to(device=self.device), self.y_train[index].to(device=self.device)
 
-        if self.x.any() is None or self.y.any() is None:
-            return None
-        n = int(self.x.shape[0] * split)
-        return self.x[n:], self.y[n:]
-
-    def get_test(self, split: float = 0.1):
+    def get_test(self):
         """
         getter for the testing dataset
         :param split: percentage of test data in float format
         :return: None if there is no data, otherwise the x and y_unscaled testing data
         """
-
-        if self.x.any() is None or self.y.any() is None or self.y_unscaled.any() is None:
-            print(self.x)
-            print(self.y)
-            print(self.y_unscaled)
-            return None
-        n = int(self.x.shape[0] * split)
-        return self.x[:n], self.y[:n], self.y_unscaled[:n]
-
-    def transform_to_numpy(self):
-        """
-        Transforms all the class data to numpy arrays
-        """
-        if torch.is_tensor(self.x):
-            self.x = self.x.numpy()
-        if torch.is_tensor(self.y):
-            self.y = self.y.numpy()
-        if torch.is_tensor(self.y_unscaled):
-            self.y_unscaled = self.y_unscaled.numpy()
-
-        for dataset in self.datasets:
-            dataset.transform_to_numpy()
-
-    def transform_to_torch(self):
-        """
-        Transforms all the class data to torch tensors
-        """
-        gpu = torch.cuda.is_available()
-        if not torch.is_tensor(self.x) and self.x is not None:
-            self.x = torch.from_numpy(self.x).float()
-            if gpu:
-                self.x = self.x.to(device='cuda')
-
-        if not torch.is_tensor(self.y) and self.y is not None:
-            self.y = torch.from_numpy(self.y).float()
-            if gpu:
-                self.y = self.y.to(device='cuda')
-
-        if not torch.is_tensor(self.y_unscaled) and self.y_unscaled is not None:
-            self.y_unscaled = torch.from_numpy(self.y_unscaled).float()
-            if gpu:
-                self.y_unscaled = self.y_unscaled.to(device='cuda')
-
-        for dataset in self.datasets:
-            dataset.transform_to_torch()
+        return self.x_test.to(device=self.device), self.y_test.to(device=self.device), self.y_unscaled_test.to(device=self.device)
 
     def inverse_transform(self, y_data):
         """

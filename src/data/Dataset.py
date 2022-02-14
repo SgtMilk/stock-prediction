@@ -1,18 +1,20 @@
 # Copyright (c) 2022 Alix Routhier-Lalonde. Licence included in root of package.
 
-import torch
-
-from src.utils import Colors, get_base_path
-from yahoofinancials import YahooFinancials
-from sklearn.preprocessing import MinMaxScaler
 import os
 import datetime
 import csv
+import torch
+from yahoofinancials import YahooFinancials
+from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 import numpy as np
+from src.utils import Colors, get_base_path
 
 
 class Interval:
+    """
+    Enum equivalent for interval choices
+    """
     daily = 1
     weekly = 5
     monthly = 22
@@ -93,12 +95,11 @@ class Dataset:
                                                                current_date),
                                                            time_interval='daily')
         except OSError:
-            raise NameError(
-                f"\nCould not download data for {self.code} (it probably doesn't exist")
+            raise NameError(f"\nCould not download data for {self.code} (it probably doesn't exist") from OSError
 
         prices = data[self.code]['prices']
 
-        with open(destination, 'w') as csv_file:
+        with open(destination, 'w', encoding="utf8") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=csv_columns)
             writer.writeheader()
             for price in prices:
@@ -149,13 +150,11 @@ class Dataset:
                             for i in range(len(data_normalised) - self.look_back - self.interval * self.pred_length + 1)])
 
         # resulting array of closing prices unscaled
-        y_data_unscaled = np.array([[data[i + self.look_back + self.interval * j - 1, 3] 
-                                    for j in range(self.pred_length)]
+        y_data_unscaled = np.array([[data[i + self.look_back + self.interval * j - 1, 3] for j in range(self.pred_length)]
                                     for i in range(len(data) - self.look_back - self.interval * self.pred_length + 1)])
 
         assert x_data.shape[0] == y_data.shape[0]
         assert y_data.shape[0] == y_data_unscaled.shape[0]
-        
         if y_data.size == 0:
             return None
 
@@ -163,9 +162,24 @@ class Dataset:
         normalizer.fit(y_data_unscaled)
 
         # setting class variables
-        self.x, self.y, self.y_unscaled, self.normalizer = x_data, y_data, y_data_unscaled, normalizer
+        self.x = []
+        self.y = []
+        self.y_unscaled = []
+        self.normalizer = normalizer
 
-        return x_data, y_data, y_data_unscaled, normalizer
+        # removing all NaN and None values
+        for i in range(x_data.shape[0]):
+            if np.isnan(np.sum(x_data[i].flatten())) or np.isnan(np.sum(y_data[i].flatten())) or np.isnan(np.sum(y_data_unscaled[i].flatten())):
+                continue
+            self.x.append(x_data[i])
+            self.y.append(y_data[i])
+            self.y_unscaled.append(y_data_unscaled[i])
+
+        self.x = np.array(self.x)
+        self.y = np.array(self.y)
+        self.y_unscaled = np.array(self.y_unscaled)
+            
+        return self.x, self.y, self.y_unscaled, self.normalizer
 
     def get_train(self, split: float = 0.1):
         """
@@ -210,7 +224,7 @@ class Dataset:
         if not torch.is_tensor(self.x) and self.x is not None:
             self.x = torch.from_numpy(self.x).float()
             if gpu:
-                self.x = self.x.to(device='cuda')
+                self.x = self.x 
 
         if not torch.is_tensor(self.y) and self.y is not None:
             self.y = torch.from_numpy(self.y).float()
@@ -228,4 +242,4 @@ class Dataset:
         :param y_data: the data to turn back in unscaled
         :return: the scaled data
         """
-        return self.normalizer.inverse_transform(y_data)
+        return self.normalizer.inverse_transform(np.expand_dims(y_data, axis=0))
