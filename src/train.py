@@ -22,11 +22,11 @@ def train_stock(codes, interval: int):
     dataset = AggregateDataset(GAN.device, codes, interval=interval, look_back=GAN.look_back, pred_length=GAN.pred_length, y_flag=True, no_download=True, batch_div = 128)
 
     # getting our models and net
-    generator = GAN.generator(dataset.x.shape[-1], GAN.hidden_dim, GAN.num_dim, GAN.dropout, dataset.y.shape[-2], GAN.kernel_size)
+    generator = GAN.generator(GAN.device, dataset.x.shape[-1], GAN.hidden_dim, GAN.num_dim, GAN.dropout, dataset.y.shape[-2], GAN.kernel_size)
     optimizer_g = GAN.optimizer_G(generator.parameters(), lr=GAN.learning_rate, betas=(0.5, 0.999))
     generator.apply(init_weights)
 
-    discriminator = GAN.discriminator(GAN.look_back + GAN.pred_length, GAN.hidden_dim, GAN.num_dim, GAN.dropout, GAN.kernel_size)
+    discriminator = GAN.discriminator(GAN.device, GAN.look_back + GAN.pred_length, GAN.hidden_dim, GAN.num_dim, GAN.dropout, GAN.kernel_size)
     optimizer_d = GAN.optimizer_D(discriminator.parameters(), lr=GAN.learning_rate, betas=(0.5, 0.999))
     discriminator.apply(init_weights)
 

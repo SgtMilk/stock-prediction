@@ -111,7 +111,7 @@ class Net:
 
                     # Train with all-fake (noise) batch
                     fake = self.generator(x_train)
-                    output_g = fake.view(-1)
+                    output_g = fake
                     input_d = torch.cat((x_train, fake.detach()), 1)
                     output_fake_d = self.discriminator(input_d).view(-1)
                     
@@ -144,8 +144,8 @@ class Net:
             #     lowest_validation_loss = self.loss_validation
 
             # logging losses
-            writer.add_scalar('Error/generator', error_d, epoch)
-            writer.add_scalar('Error/discriminator', error_g, epoch)
+            writer.add_scalar('Error/generator', error_g, epoch)
+            writer.add_scalar('Error/discriminator', error_d, epoch)
             if epoch == 1 or epoch % verbosity_interval == 0:
                 print(f"Epoch {epoch}, Generator Error: {error_g}, " +
                       f"Discriminator Error: {error_g}, Dx: {d_x}, Dg1: {d_g1}, Dg2: {d_g2}")

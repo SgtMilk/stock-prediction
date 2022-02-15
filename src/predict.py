@@ -1,12 +1,10 @@
 # Copyright (c) 2022 Alix Routhier-Lalonde. Licence included in root of package.
 
-import datetime
 import os
 import numpy as np
 import torch
 from src.hyperparameters import GAN
 from src.data import Dataset
-from src.model import Net
 from src.utils import get_base_path
 
 
