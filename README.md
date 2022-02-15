@@ -15,12 +15,14 @@ To install them, run `pip3 install -r requirements.txt`
 
 ## Running the project
 
-To run the backend services, run `./app.py`
+To run the backend services, run `python3 app.py`
 
 ## Training the model
 
-The model is currently a work-in-progress. To train it, run `./src/train.py`.
-You can play with hyperparameters in `./src/hyperparameters/train.py`.
+The model is currently a work-in-progress. To train it, run `python3 train.py`.
+You can play with hyperparameters in `./src/hyperparameters/gan.py`.
+
+NOTE: You will have to download stock data the first time. You can change the `no_download` paramenter in `./src/hyperparameters/gan.py` to be `False` for that first run.
 
 The model-training code is all in the `./src` folder.
 If a helper function has to do with data or cleaning that data, it is situated in the `./src/data` folder.
