@@ -1,22 +1,20 @@
 # Copyright (c) 2022 Alix Routhier-Lalonde. Licence included in root of package.
 
-import numpy as np
-from flask import Flask, abort
-from src.hyperparameters import Train
-from src.utils import get_base_path
-from src.data import Interval, Dataset
-import pandas_market_calendars as mcal
-from flask_cors import CORS
-from hashlib import sha256
 import json
 import datetime
 import os
-import torch
-import sys
+from hashlib import sha256
+from flask import Flask, abort
+import pandas_market_calendars as mcal
+from flask_cors import CORS
+from src.utils import get_base_path
 from src import predict_stock
 
 
 class Backend:
+    """
+    Backend class
+    """
     def __init__(self):
         # creating the models
 
@@ -83,7 +81,7 @@ class Backend:
             file = os.path.join(
                 get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
-                with open(file) as json_file:
+                with open(file, encoding='utf8') as json_file:
                     data = json.load(json_file)
                     return json.dumps(data)
             abort(404)
@@ -99,7 +97,7 @@ class Backend:
             file = os.path.join(
                 get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
-                with open(file) as json_file:
+                with open(file, encoding='utf8') as json_file:
                     data = json.load(json_file)
                     portfolios = data['portfolios']
                     if portfolio_id in portfolios:
@@ -121,7 +119,7 @@ class Backend:
                 get_base_path(), "backend/data/portfolios.json")
             portfolio_id = str(sha256(name.encode('utf-8')).hexdigest())
             if os.path.exists(file):
-                with open(file) as json_file:
+                with open(file, encoding='utf8') as json_file:
                     data = json.load(json_file)
                     portfolios = data['portfolios']
                     if portfolio_id in portfolios:
@@ -145,7 +143,7 @@ class Backend:
                     "stocks": {}
                 }
 
-            with open(file, 'w') as outfile:
+            with open(file, 'w', encoding='utf8') as outfile:
                 json.dump(data, outfile)
             return json.dumps(data)
 
@@ -160,7 +158,7 @@ class Backend:
             file = os.path.join(
                 get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
-                with open(file) as json_file:
+                with open(file, encoding='utf8') as json_file:
                     data = json.load(json_file)
                     portfolios = data['portfolios']
                     stocks = data['stocks']
@@ -175,7 +173,7 @@ class Backend:
                                     condition = True
                             if not condition and stock_id in stocks:
                                 del stocks[stock_id]
-                        with open(file, 'w') as outfile:
+                        with open(file, 'w', encoding='utf8') as outfile:
                             json.dump(data, outfile)
                         return json.dumps(data)
                     else:
@@ -196,7 +194,7 @@ class Backend:
             file = os.path.join(
                 get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
-                with open(file) as json_file:
+                with open(file, encoding='utf8') as json_file:
                     data = json.load(json_file)
                     portfolios = data['portfolios']
                     stocks = data['stocks']
@@ -217,7 +215,7 @@ class Backend:
                             if stock_id not in portfolios[portfolio_id]["stocks"]:
                                 portfolios[portfolio_id]["stocks"].append(
                                     stock_id)
-                            with open(file, 'w') as outfile:
+                            with open(file, 'w', encoding='utf8') as outfile:
                                 json.dump(data, outfile)
                             data['new_stock'] = new_stock
                             return json.dumps(data)
@@ -240,7 +238,7 @@ class Backend:
             file = os.path.join(
                 get_base_path(), "backend/data/portfolios.json")
             if os.path.exists(file):
-                with open(file) as json_file:
+                with open(file, encoding='utf8') as json_file:
                     data = json.load(json_file)
                     portfolios = data['portfolios']
                     stocks = data['stocks']
@@ -255,7 +253,7 @@ class Backend:
                                     condition = True
                             if not condition and stock_id in stocks:
                                 del stocks[stock_id]
-                            with open(file, 'w') as outfile:
+                            with open(file, 'w', encoding='utf8') as outfile:
                                 json.dump(data, outfile)
                             return json.dumps(data)
                         else:
@@ -266,63 +264,10 @@ class Backend:
                 abort(404)
 
     def run(self):
+        """
+        Runs the backend
+        """
         self.app.run(host='0.0.0.0', port=8000, threaded=False)
-
-    def predict_data(self, code: str, num_days):
-        """
-        Predicts stock prices for the next num_days days
-        :param code: the stock's code
-        :param num_days: the number of days to predict for
-        :return: None if the model cannot be found, otherwise predicted stock data
-        """
-        # get the data and model
-        dataset = Dataset(code, interval=num_days, y_flag=True)
-        dataset.transform_to_torch()
-        if num_days == 1:
-            model = self.model_daily
-        elif num_days == 5:
-            model = self.model_weekly
-        elif num_days == 22:
-            model = self.model_monthly
-        else:
-            return None
-        if model is None:
-            return None
-
-        # predict
-        data = torch.from_numpy(np.array(dataset.prediction_data)).float()
-        if torch.cuda.is_available():
-            data = data.to(device='cuda')
-        with torch.no_grad():
-            predicted = model(data)
-
-        # re-transforming to numpy
-        predicted = predicted.detach().cpu().numpy()
-        return predicted
-        # return dataset.normalizer.inverse_transform(predicted)
-
-
-def load_model(num_days: int):
-    """
-    Will load a model from the number of days it has been trained for
-    :param num_days: the number of days the model has been trained for
-    :return: the model
-    """
-    model = Train.model(1, Train.hidden_dim, Train.num_dim,
-                        Train.dropout, num_days)
-
-    # if we have a gpu available, we store the models there
-    gpu = torch.cuda.is_available()
-    if gpu:
-        model.to('cuda')
-    file = os.path.abspath(os.path.join(
-        get_base_path(), f'src/model/models/model-{num_days}.hdf5'))
-    print(file)
-    if not os.path.exists(file):
-        return None
-    model.load_state_dict(torch.load(file))
-    model.eval()
-    return model
 
 
 if __name__ == '__main__':

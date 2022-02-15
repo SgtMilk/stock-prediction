@@ -136,3 +136,6 @@ backend/data/portfolios.json
 # Pycharm
 .idea/
 .vscode/
+
+# Tensorboard
+runs/

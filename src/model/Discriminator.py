@@ -1,29 +1,43 @@
-from torch.nn import Module, Sequential, Conv1d, BatchNorm1d, LeakyReLU, GRU, Sigmoid
+from torch.nn import Module, Sequential, Conv1d, BatchNorm1d, LeakyReLU, GRU, Sigmoid, Linear
+import torch
 
 class Discriminator(Module):
     """
     This model is a Discriminator for a GAN. It is the inverse of the Generator model which is located in the same folder.
     """
-    def __init__(self, input_dim, hidden_dim, num_layers, dropout, kernel_size):
+    def __init__(self, device, input_dim, hidden_dim, num_layers, dropout, kernel_size):
         super(Discriminator, self).__init__()
-        self.main = Sequential(
-            GRU(input_size=input_dim, hidden_size=hidden_dim * 4, num_layers=num_layers, dropout=dropout, batch_first=True),
 
-            Conv1d(input_dim, hidden_dim * 4, kernel_size, bias=False),
-            BatchNorm1d(hidden_dim * 4),
-            LeakyReLU(True),
+        self.conv = Conv1d(input_dim, hidden_dim * 2, kernel_size, bias=False)
+        self.batch = BatchNorm1d(hidden_dim * 2)
+        self.relu = LeakyReLU(True)
 
-            Conv1d(hidden_dim * 4, hidden_dim * 2, kernel_size, bias=False),
-            BatchNorm1d(hidden_dim * 2),
-            LeakyReLU(True),
+        self.gru = GRU(
+            input_size=hidden_dim * 2,
+            hidden_size=hidden_dim,
+            num_layers=num_layers,
+            dropout=dropout,
+            batch_first=True)
 
-            Conv1d(hidden_dim * 2, hidden_dim, kernel_size, bias=False),
-            BatchNorm1d(hidden_dim),
-            LeakyReLU(True),
+        self.linear = Linear(hidden_dim, 1)
+        self.sigmoid = Sigmoid()
 
-            Conv1d(hidden_dim, 1, kernel_size, bias=False),
-            Sigmoid()
-        )
+        self.num_layers = num_layers
+        self.hidden_dim = hidden_dim
+        self.device = device
     
-    def forward(self, input):
-        return self.main(input)
+    def forward(self, input_data):
+        """
+        Returns the model prediction
+        """
+
+        t = self.conv(input_data)
+        t = self.batch(t)
+        t = self.relu(t)
+
+        h0 = torch.randn(self.num_layers, t.size(0), self.hidden_dim).requires_grad_().to(device=self.device)
+        t, (_) = self.gru(t.permute(0,2,1), h0)
+        t = self.linear(t[:, -1])
+        t = self.sigmoid(t)
+
+        return t

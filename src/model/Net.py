@@ -1,17 +1,19 @@
 # Copyright (c) 2022 Alix Routhier-Lalonde. Licence included in root of package.
 
+from typing import Union
+import time
+import os
+from sklearn import datasets
+from sklearn.preprocessing import MinMaxScaler
 from torch.optim import optimizer as optim
 from sklearn.metrics import mean_squared_error
 import torch
-from src.data import Dataset, AggregateDataset
 from torch.utils.tensorboard import SummaryWriter
-from src.utils import get_base_path
-from typing import Union
 import numpy as np
 import matplotlib.pyplot as plt
-import time
-import os
-import datetime
+from src.data import Dataset, AggregateDataset
+from src.utils import get_base_path, progress_bar
+
 
 
 class Net:
@@ -19,19 +21,23 @@ class Net:
     The Net class will build the model and train it.
     """
 
-    def __init__(self, optimizer: optim, loss_func, model, dataset: Union[Dataset, AggregateDataset]):
+    def __init__(self, device, optimizer_g: optim, optimizer_d: optim, criterion, generator, discriminator, dataset: Union[Dataset, AggregateDataset]):
         """
         The __init__ function will set all training parameters and generate the model
-        :param optimizer: the training optimizer
-        :param loss_func: the training loss function
-        :param model: the pytorch model
+        :param optimizer_g: the training optimizer for the generator
+        :param optimizer_d: the training optimizer for the discriminator
+        :param criterion: the training loss function
+        :param generator: the pytorch generator model
+        :param discriminator: the pytorch discriminator model
+        :param dataset: the dataset to train on
         """
-        self.optimizer = optimizer
-        self.loss_func = loss_func
-        self.model = model
-        gpu = torch.cuda.is_available()
-        if gpu:
-            self.model = self.model.to(device='cuda')
+        self.device = device
+        self.optimizer_g = optimizer_g
+        self.optimizer_d = optimizer_d
+        self.criterion = criterion
+        self.generator = generator.to(device=self.device)
+        self.discriminator = discriminator.to(device=self.device)
+        self.dataset = dataset
 
         self.weights_train = None
         self.loss_train = None
@@ -41,27 +47,12 @@ class Net:
         # getting the right file name
         destination_folder = os.path.abspath(
             get_base_path() + 'src/model/models')
-        condition = False
-        try:
-            dataset.code
-        except AttributeError:
-            condition = True
 
-        current_date = str(datetime.date.today())
+        self.generator_filepath = os.path.join(destination_folder, f"generator-{dataset.interval}.hdf5")
+        self.discriminator_filepath = os.path.join(destination_folder, f"discriminator-{dataset.interval}.hdf5")
 
-        if condition and len(dataset.datasets) != 1:
-            self.filepath = os.path.join(
-                destination_folder, f"model-{dataset.interval}.hdf5")
-        else:
-            if condition:
-                code_string = dataset.datasets[0].code
-            else:
-                code_string = dataset.code
-            self.filepath = os.path.join(
-                destination_folder, f"{code_string}-{dataset.interval}-{current_date}.hdf5")
 
-    def train(self, epochs: int, dataset: Union[Dataset, AggregateDataset], validation_split: float, patience: int,
-              verbosity_interval: int = 1):
+    def train(self, epochs: int, patience: int, verbosity_interval: int = 1):
         """
         The training loop for the net
         :param patience: the number of epochs the validation loss doesn't improve before we stop training the model
@@ -71,55 +62,96 @@ class Net:
         :param verbosity_interval: at which epoch interval there will be logging
         """
         writer = SummaryWriter()
-        x, y = dataset.get_train()
-        n = int(x.shape[0] * (1 - validation_split))
-        x_train, y_train = x[:n], y[:n]
-        x_validation, y_validation = x[n:], y[n:]
 
         self.hist = np.zeros((epochs, 2))
         start_time = time.time()
 
-        lowest_validation_loss = None
-        patience_counter = 0
+        # lowest_validation_loss = None
+        error_g = error_d = None
+        # patience_counter = 0
+
+
+        self.generator.train()
+        self.discriminator.train()
 
         for epoch in range(1, epochs + 1):
             # finishing the training if the patience doesn't improve
-            if patience_counter >= patience:
-                break
-            patience += 1
-
-            # training
-            self.optimizer.zero_grad()
-            self.model.train()
+            # if patience_counter >= patience:
+            #     break
+            # patience_counter += 1
             with torch.set_grad_enabled(True):
-                y_predicted_train = self.model(x_train)
-                self.loss_train = self.loss_func(y_predicted_train, y_train)
 
-                self.loss_train.backward()
-                self.optimizer.step()
+                error_g = 0
+                error_d = 0
 
-            # validation
-            self.optimizer.zero_grad()
-            self.model.eval()
-            with torch.set_grad_enabled(False):
-                y_predicted_validation = self.model(x_validation)
-                self.loss_validation = self.loss_func(y_predicted_validation, y_validation)
+                d_x = 0
+                d_g1 = 0
+                d_g2 = 0
 
-            self.hist[epoch - 1] = np.array([self.loss_train.cpu().detach().numpy(), self.loss_validation.cpu().detach().numpy()])
+                for batch in range(self.dataset.batch_div):     
+                    # getting the batch data from the dataset
+                    x_train, y_train = self.dataset.get_train(batch)
 
-            if lowest_validation_loss is None or lowest_validation_loss > self.loss_validation:
-                self.save()
-                lowest_validation_loss = self.loss_validation
+                    labels_size_d = y_train.size(0)
+                    real_labels = torch.full((labels_size_d,), 1, dtype=torch.float, device=self.device)
+                    fake_labels = torch.full((labels_size_d,), 0, dtype=torch.float, device=self.device)
+
+                    ####################################
+                    # Update the discriminator network #
+                    ####################################
+
+                    self.discriminator.zero_grad()
+                    self.generator.zero_grad()
+
+                    # Train with all-real batch
+                    output_real_d = self.discriminator(torch.cat((x_train, y_train), 1)).view(-1)
+                    error_real_d = self.criterion(output_real_d, real_labels)
+                    error_real_d.backward()
+                    d_x += output_real_d.mean().item()
+
+                    # Train with all-fake (noise) batch
+                    fake = self.generator(x_train)
+                    output_g = fake
+                    input_d = torch.cat((x_train, fake.detach()), 1)
+                    output_fake_d = self.discriminator(input_d).view(-1)
+                    
+                    error_fake_g = self.criterion(fake, y_train)
+                    error_fake_g.backward()
+                    error_fake_d = self.criterion(output_fake_d, fake_labels)
+                    error_fake_d.backward()
+                    d_g1 += output_fake_d.mean().item()
+                    d_g2 += output_g.mean().item()
+
+                    error_g +=error_fake_g.item()
+                    error_d += error_real_d.item() + error_fake_d.item()
+
+                    self.optimizer_g.step()
+                    self.optimizer_d.step()
+
+                    progress_bar(batch, self.dataset.batch_div, f"epoch {str(epoch)}/{str(epochs)}")
+
+            # getting the averages
+            error_g /= self.dataset.batch_div
+            error_d /= self.dataset.batch_div
+            d_x /= self.dataset.batch_div
+            d_g1 /= self.dataset.batch_div
+            d_g2 /= self.dataset.batch_div
+
+            self.hist[epoch - 1] = np.array([error_d, error_g])
+
+            # if lowest_validation_loss is None or lowest_validation_loss > self.loss_validation:
+            #     self.save()
+            #     lowest_validation_loss = self.loss_validation
 
             # logging losses
-            writer.add_scalar('Loss/train', self.loss_train, epoch)
-            writer.add_scalar('Loss/validation', self.loss_validation, epoch)
+            writer.add_scalar('Error/generator', error_g, epoch)
+            writer.add_scalar('Error/discriminator', error_d, epoch)
             if epoch == 1 or epoch % verbosity_interval == 0:
-                print(f"Epoch {epoch}, Training Loss: {self.loss_train.item()}, " +
-                      f"Validation Loss: {self.loss_validation}")
+                print(f"Epoch {epoch}, Generator Error: {error_g}, " +
+                      f"Discriminator Error: {error_g}, Dx: {d_x}, Dg1: {d_g1}, Dg2: {d_g2}")
         # self.load()
         training_time = time.time() - start_time
-        print("Training time: {}".format(training_time))
+        print(f"Training time: {training_time}")
 
     def evaluate_training(self):
         """
@@ -134,30 +166,30 @@ class Net:
 
         plt.show()
 
-    def evaluate(self, dataset: Union[Dataset, AggregateDataset]):
+    def evaluate(self):
         """
         This function will evaluate the model and plot the results
         :param dataset: the dataset to evaluate
         """
-        x, y, y_unscaled = dataset.get_test()
-        predicted_y_test = np.squeeze(self.model(x))
+        x_test, y_test, y_unscaled_test = self.dataset.get_test()
+        predicted_y_test = np.squeeze(self.generator(x_test))
 
         # re-transforming to numpy
         predicted_y_test = predicted_y_test.detach().cpu().numpy()
-        y = y.detach().cpu().numpy()
-        y_unscaled = y_unscaled.detach().cpu().numpy()
+        y_test = y_test.detach().cpu().numpy()
+        y_unscaled = y_unscaled_test.detach().cpu().numpy()
 
-        unscaled_predicted = dataset.inverse_transform(predicted_y_test)
+        unscaled_predicted = self.dataset.inverse_transform(predicted_y_test)
 
         assert predicted_y_test.shape == unscaled_predicted.shape
         assert predicted_y_test.shape == y_unscaled.shape
 
-        scaled_mse = mean_squared_error(y, predicted_y_test)
+        scaled_mse = mean_squared_error(np.squeeze(y_test), predicted_y_test)
         print(f"scaled_mse_y: {scaled_mse}")
 
         plt.gcf().set_size_inches(22, 15, forward=True)
 
-        plt.plot(y, label='real', marker='o')
+        plt.plot(np.squeeze(y_test), label='real', marker='o')
         plt.plot(predicted_y_test, label='predicted', marker='o')
 
         plt.legend(['Real', 'Predicted'])
@@ -168,7 +200,12 @@ class Net:
         """
         This method will save the trained model according to the dataset's code(s) and the current date
         """
-        torch.save(self.model.state_dict(), self.filepath)
+        torch.save(self.generator.state_dict(), self.generator_filepath)
+        torch.save(self.discriminator.state_dict(), self.discriminator_filepath)
 
     def load(self):
-        self.model = torch.load(self.filepath)
+        """
+        This method will load and return a model
+        """
+        self.generator = torch.load(self.generator_filepath)
+        self.discriminator = torch.load(self.discriminator_filepath)
