@@ -1,8 +1,12 @@
 # stock-prediction
 
 This repository is trying to generate estimates of future stock value.
-Yes, I know it is impossible to get accurate future values of the stock market because of it's volatility, but can you really blame me for trying? 😉️
-Like I said above, please do not assume that you will get accurate stock values out of this project and this is a get-rich-quick scheme because this path will probably make you lose a lot of money.
+Yes, I know it is impossible to get accurate future values of the stock market. If you use this, I am not liable for any losses of money. 
+The prediction uses a PyTorch convolution/GRU GAN model.
+
+# Setup
+
+This project is set up to use VS Code devcontainers. If you do not wish to use them, the following section tells you how to to install required packages.
 
 ## Required packages
 
