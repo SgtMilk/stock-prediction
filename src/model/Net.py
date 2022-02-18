@@ -94,21 +94,24 @@ class Net:
                     x_train, y_train = self.dataset.get_train(batch)
 
                     labels_size_d = y_train.size(0)
-                    real_labels = torch.full((labels_size_d,), 1, dtype=torch.float, device=self.device)
-                    fake_labels = torch.full((labels_size_d,), 0, dtype=torch.float, device=self.device)
+                    real_labels = torch.full((labels_size_d,), 0, dtype=torch.float, device=self.device)
+                    fake_labels = torch.full((labels_size_d,), 1, dtype=torch.float, device=self.device)
 
                     ####################################
                     # Update the discriminator network #
                     ####################################
 
-                    self.discriminator.zero_grad()
-                    self.generator.zero_grad()
+                    self.optimizer_g.zero_grad()
+                    self.optimizer_d.zero_grad()
 
                     # Train with all-real batch
                     output_real_d = self.discriminator(torch.cat((x_train, y_train), 1)).view(-1)
                     error_real_d = self.criterion_d(output_real_d, real_labels)
                     error_real_d.backward()
                     d_x += output_real_d.mean().item()
+
+                    self.optimizer_d.step()
+                    self.optimizer_d.zero_grad()
 
                     # Train with all-fake (noise) batch
                     fake = self.generator(x_train)
@@ -182,14 +185,16 @@ class Net:
             for batch in range(self.dataset.num_test_batches): 
                 if batch == 0:
                     x_test, y_test, y_unscaled_test = self.dataset.get_test(batch)
-                    predicted_y_test = torch.squeeze(self.generator(x_test))
+                    predicted_y_test = self.generator(x_test)
+                    predicted_y_test = torch.reshape(predicted_y_test, (predicted_y_test.shape[0], predicted_y_test.shape[1]))
 
                     y_test = y_test.detach().cpu().numpy()
                     y_unscaled_test = y_unscaled_test.detach().cpu().numpy()
                     predicted_y_test = predicted_y_test.detach().cpu().numpy()
                 else:
                     x_temp, y_temp, y_unscaled_temp = self.dataset.get_test(batch)
-                    predicted_y_temp = torch.squeeze(self.generator(x_temp))
+                    predicted_y_temp = self.generator(x_temp)
+                    predicted_y_temp = torch.reshape(predicted_y_temp, (predicted_y_temp.shape[0], predicted_y_temp.shape[1]))
                     y_test = np.concatenate((y_test, y_temp.detach().cpu().numpy()))
                     y_unscaled_test = np.concatenate((y_unscaled_test, y_unscaled_temp.detach().cpu().numpy()))
                     predicted_y_test = np.concatenate((predicted_y_test, predicted_y_temp.detach().cpu().numpy()))
@@ -206,6 +211,10 @@ class Net:
         """
         This method will save the trained model according to the dataset's code(s) and the current date
         """
+        if os.path.exists(self.generator_filepath):
+            os.remove(self.generator_filepath)
+        if os.path.exists(self.discriminator_filepath):
+            os.remove(self.discriminator_filepath)
         torch.save(self.generator.state_dict(), self.generator_filepath)
         torch.save(self.discriminator.state_dict(), self.discriminator_filepath)
 

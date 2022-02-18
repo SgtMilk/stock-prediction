@@ -28,7 +28,7 @@ class GAN:
     kernel_size = 1
 
     # training parameters
-    epochs = 100
+    epochs = 20
     patience = epochs
     learning_rate = 0.0001
     loss_G = MSELoss(reduction='mean')

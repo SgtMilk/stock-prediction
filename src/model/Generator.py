@@ -35,7 +35,8 @@ class Generator(Module):
         for _ in range(self.output_dim):
             prediction = self.forward_helper(input_data[:,-self.input_dim:])
             input_data = torch.cat((input_data, torch.reshape(prediction, (prediction.shape[0], 1, 1))), axis=1)  
-        return input_data[:,-self.output_dim:]
+        returned_data = input_data[:,-self.output_dim:]
+        return returned_data
 
     def forward_helper(self, input_data):
         """

@@ -39,12 +39,14 @@ class Backend:
             :return: the prediction data
             """
 
-            if num_days >= 50:
-                abort(404)
+            if num_days >= 30:
+                print("number of days too big")
+                abort(400)
 
             data = predict_stock(code, interval, num_days)
             if data is None:
-                abort(404)
+                print('cannot predict data')
+                abort(400)
             data = data.squeeze().tolist()
             returned_data = []
             if not isinstance(data, list):
