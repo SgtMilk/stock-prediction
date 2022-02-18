@@ -4,7 +4,6 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import torch
 from src.utils import progress_bar
-from src.utils import Colors
 from .Dataset import Dataset
 
 
@@ -61,23 +60,24 @@ class AggregateDataset:
         self.normalizer.fit(self.y_unscaled.reshape(-1, 1))
 
         # transforming to torch tensors
-        self.x = torch.from_numpy(self.x).float()
-        self.y =torch.from_numpy(self.y).float()
-        self.y_unscaled = torch.from_numpy(self.y_unscaled).float()
+        self.batch_size = int(self.x.shape[0] / batch_div)
+        self.x = torch.from_numpy(self.x[:batch_div * self.batch_size]).float()
+        self.y =torch.from_numpy(self.y[:batch_div * self.batch_size]).float()
+        self.y_unscaled = torch.from_numpy(self.y_unscaled[:batch_div * self.batch_size]).float()
+
+        # reshaping into batches
+        self.x = self.x.reshape((self.batch_div, self.batch_size, self.x.shape[1], self.x.shape[2]))
+        self.y = self.y.reshape((self.batch_div, self.batch_size, self.y.shape[1], self.y.shape[2]))
+        self.y_unscaled = self.y_unscaled.reshape((self.batch_div, self.batch_size, self.y_unscaled.shape[1]))
 
         # finding the right split
         n_split = int(self.x.shape[0] * (1 - self.split))
-        n_split = n_split - n_split % self.batch_div
-        self.batch_size = int(n_split / self.batch_div)
 
         self.x_train, self.y_train, self.y_unscaled_train = self.x[:n_split], self.y[:n_split], self.y_unscaled[:n_split]
         self.x_test, self.y_test, self.y_unscaled_test = self.x[n_split:], self.y[n_split:], self.y_unscaled[n_split:]
 
-        # batching inputs to have cpu -> gpu
-        self.x_train = self.x_train.reshape((self.batch_div, self.batch_size, self.look_back, 1))
-        self.y_train = self.y_train.reshape((self.batch_div, self.batch_size, self.y_train.shape[1], self.y_train.shape[2]))
-
-        self.x_test = self.x_test.reshape(self.x_test.shape[0], self.look_back, 1)
+        self.num_train_batches = n_split
+        self.num_test_batches = self.batch_div - n_split
 
     def get_train(self, index: int):
         """
@@ -87,13 +87,13 @@ class AggregateDataset:
         """
         return self.x_train[index].to(device=self.device), self.y_train[index].to(device=self.device)
 
-    def get_test(self):
+    def get_test(self, index: int):
         """
         getter for the testing dataset
         :param split: percentage of test data in float format
         :return: None if there is no data, otherwise the x and y_unscaled testing data
         """
-        return self.x_test.to(device=self.device), self.y_test.to(device=self.device), self.y_unscaled_test.to(device=self.device)
+        return self.x_test[index].to(device=self.device), self.y_test[index].to(device=self.device), self.y_unscaled_test[index].to(device=self.device)
 
     def inverse_transform(self, y_data):
         """

@@ -28,7 +28,7 @@ def predict_stock(code, interval: int, num_days: int, overwrite: bool = False):
     dataset.transform_to_torch()
 
     # getting our model and net
-    generator = GAN.generator(dataset.x.shape[-1], GAN.hidden_dim, GAN.num_dim, GAN.dropout, dataset.y.shape[-2], GAN.kernel_size)
+    generator = GAN.generator(GAN.device, dataset.x.shape[-1], GAN.hidden_dim, GAN.num_dim, GAN.dropout, dataset.y.shape[-2], GAN.kernel_size)
 
     generator.to(device=GAN.device)
 

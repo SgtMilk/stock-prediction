@@ -1,6 +1,6 @@
 # Copyright (c) 2022 Alix Routhier-Lalonde. Licence included in root of package.
 
-from torch.nn import MSELoss
+from torch.nn import MSELoss, BCELoss
 from torch.optim import Adam
 import torch
 from src.model import Generator, Discriminator
@@ -17,6 +17,7 @@ class GAN:
     # dataset parameters
     look_back = 100
     pred_length = 30
+    batch_div = 256
 
     # model parameters
     generator = Generator
@@ -30,6 +31,7 @@ class GAN:
     epochs = 100
     patience = epochs
     learning_rate = 0.0001
-    loss = MSELoss(reduction='mean')
+    loss_G = MSELoss(reduction='mean')
+    loss_D = BCELoss(reduction='mean')
     optimizer_G = Adam
     optimizer_D = Adam
