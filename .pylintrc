@@ -1,7 +1,4 @@
 [MASTER]
-disable=
-    C0114, # missing-module-docstring
-    line-too-long
 init-hook='import sys; sys.path.append(".")'
 
 [TYPECHECK]

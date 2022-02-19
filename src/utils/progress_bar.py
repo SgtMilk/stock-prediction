@@ -1,13 +1,25 @@
-# taken from https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
+# Copyright (c) 2022 Alix Routhier-Lalonde. Licence included in root of package.
+
+"""
+Contains the progress_bar script, which will print a progress bar to the console.
+"""
 
 import sys
 
-def progress_bar(count, total, suffix=''):
-    bar_len = 60
-    filled_len = int(round(bar_len * count / float(total)))
+BAR_LEN = 60
+
+
+def progress_bar(count, total, suffix=""):
+    """
+    Will print a progess bar and update it at each call.
+    :param count: progress in the total
+    :param total: the maximum the count can go to
+    :param suffix: a message to add at the end of the progress bar
+    """
+    filled_len = int(round(BAR_LEN * count / float(total)))
 
     percents = round(100.0 * count / float(total), 1)
-    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+    bar_progress = "=" * filled_len + "-" * (BAR_LEN - filled_len)
 
-    sys.stdout.write('[%s] %s%s    %s\r' % (bar, percents, '%', suffix))
+    sys.stdout.write(f"[{bar_progress}] {percents}%    {suffix}\r")
     sys.stdout.flush()

@@ -1,20 +1,18 @@
 # Copyright (c) 2022 Alix Routhier-Lalonde. Licence included in root of package.
 
-from typing import Union
-import gc
+"""
+Contains the Net class, a class for training a model.
+"""
+
 import time
 import os
-from sklearn import datasets
-from sklearn.preprocessing import MinMaxScaler
 from torch.optim import optimizer as optim
 from sklearn.metrics import mean_squared_error
 import torch
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
-import matplotlib.pyplot as plt
-from src.data import Dataset, AggregateDataset
+from src.data import AggregateDataset
 from src.utils import get_base_path, progress_bar
-
 
 
 class Net:
@@ -22,9 +20,20 @@ class Net:
     The Net class will build the model and train it.
     """
 
-    def __init__(self, device, optimizer_g: optim, optimizer_d: optim, criterion_g, criterion_d, generator, discriminator, dataset: Union[Dataset, AggregateDataset]):
+    def __init__(
+        self,
+        device,
+        optimizer_g: optim,
+        optimizer_d: optim,
+        criterion_g,
+        criterion_d,
+        generator,
+        discriminator,
+        dataset: AggregateDataset,
+    ):
         """
         The __init__ function will set all training parameters and generate the model
+        :param device: the device on which the model and data will be on (cpu vs cuda)
         :param optimizer_g: the training optimizer for the generator
         :param optimizer_d: the training optimizer for the discriminator
         :param criterion_g: the training loss function for the generator
@@ -46,20 +55,19 @@ class Net:
         self.hist = None
 
         # getting the right file name
-        destination_folder = os.path.abspath(
-            get_base_path() + 'src/model/models')
+        destination_folder = os.path.abspath(get_base_path() + "src/model/models")
 
-        self.generator_filepath = os.path.join(destination_folder, f"generator-{dataset.interval}.hdf5")
-        self.discriminator_filepath = os.path.join(destination_folder, f"discriminator-{dataset.interval}.hdf5")
+        self.generator_filepath = os.path.join(
+            destination_folder, f"generator-{dataset.interval}.hdf5"
+        )
+        self.discriminator_filepath = os.path.join(
+            destination_folder, f"discriminator-{dataset.interval}.hdf5"
+        )
 
-
-    def train(self, epochs: int, patience: int, verbosity_interval: int = 1):
+    def train(self, epochs: int, verbosity_interval: int = 1):
         """
         The training loop for the net
-        :param patience: the number of epochs the validation loss doesn't improve before we stop training the model
         :param epochs: the number of epochs the training loop will run
-        :param dataset: the dataset
-        :param validation_split: the split between validation and training data
         :param verbosity_interval: at which epoch interval there will be logging
         """
         writer = SummaryWriter()
@@ -67,19 +75,12 @@ class Net:
         self.hist = np.zeros((epochs, 2))
         start_time = time.time()
 
-        # lowest_validation_loss = None
         error_g = error_d = None
-        # patience_counter = 0
-
 
         self.generator.train()
         self.discriminator.train()
 
         for epoch in range(1, epochs + 1):
-            # finishing the training if the patience doesn't improve
-            # if patience_counter >= patience:
-            #     break
-            # patience_counter += 1
             with torch.set_grad_enabled(True):
 
                 error_g = 0
@@ -89,18 +90,21 @@ class Net:
                 d_g1 = 0
                 d_g2 = 0
 
-                for batch in range(self.dataset.num_train_batches):     
+                for batch in range(self.dataset.num_train_batches):
                     # getting the batch data from the dataset
                     x_train, y_train = self.dataset.get_train(batch)
 
                     labels_size_d = y_train.size(0)
-                    real_labels = torch.full((labels_size_d,), 0, dtype=torch.float, device=self.device)
-                    fake_labels = torch.full((labels_size_d,), 1, dtype=torch.float, device=self.device)
+                    real_labels = torch.full(
+                        (labels_size_d,), 0, dtype=torch.float, device=self.device
+                    )
+                    fake_labels = torch.full(
+                        (labels_size_d,), 1, dtype=torch.float, device=self.device
+                    )
 
                     ####################################
                     # Update the discriminator network #
                     ####################################
-
                     self.optimizer_g.zero_grad()
                     self.optimizer_d.zero_grad()
 
@@ -118,7 +122,7 @@ class Net:
                     output_g = fake
                     input_d = torch.cat((x_train, fake.detach()), 1)
                     output_fake_d = self.discriminator(input_d).view(-1)
-                    
+
                     error_fake_g = self.criterion_g(fake, y_train)
                     error_fake_g.backward()
                     error_fake_d = self.criterion_d(output_fake_d, fake_labels)
@@ -126,7 +130,7 @@ class Net:
                     d_g1 += output_fake_d.mean().item()
                     d_g2 += output_g.mean().item()
 
-                    error_g +=error_fake_g.item()
+                    error_g += error_fake_g.item()
                     error_d += error_real_d.item() + error_fake_d.item()
 
                     self.optimizer_g.step()
@@ -143,38 +147,21 @@ class Net:
 
             self.hist[epoch - 1] = np.array([error_d, error_g])
 
-            # if lowest_validation_loss is None or lowest_validation_loss > self.loss_validation:
-            #     self.save()
-            #     lowest_validation_loss = self.loss_validation
-
             # logging losses
-            writer.add_scalar('Error/generator', error_g, epoch)
-            writer.add_scalar('Error/discriminator', error_d, epoch)
+            writer.add_scalar("Error/generator", error_g, epoch)
+            writer.add_scalar("Error/discriminator", error_d, epoch)
             if epoch == 1 or epoch % verbosity_interval == 0:
-                print(f"Epoch {epoch}, Generator Error: {error_g}, " +
-                      f"Discriminator Error: {error_g}, Dx: {d_x}, Dg1: {d_g1}, Dg2: {d_g2}")
-        self.save()
+                print(
+                    f"Epoch {epoch}, Generator Error: {error_g}, "
+                    + f"Discriminator Error: {error_g}, Dx: {d_x}, Dg1: {d_g1}, Dg2: {d_g2}"
+                )
         training_time = time.time() - start_time
         print(f"Training time: {training_time}")
         torch.cuda.empty_cache()
 
-    def evaluate_training(self):
-        """
-        This function will plot the training and validation losses
-        """
-        plt.gcf().set_size_inches(22, 15, forward=True)
-
-        plt.plot([value[0] for value in self.hist], label='training loss')
-        plt.plot([value[1] for value in self.hist], label='validation loss')
-
-        plt.legend(['Training Loss', 'Validation Loss'])
-
-        plt.show()
-
     def evaluate(self):
         """
-        This function will evaluate the model and plot the results
-        :param dataset: the dataset to evaluate
+        This function will evaluate the model and print the MSE loss to console
         """
 
         self.generator.eval()
@@ -182,11 +169,13 @@ class Net:
 
         predicted_y_test = y_test = y_unscaled_test = None
         with torch.set_grad_enabled(False):
-            for batch in range(self.dataset.num_test_batches): 
+            for batch in range(self.dataset.num_test_batches):
                 if batch == 0:
                     x_test, y_test, y_unscaled_test = self.dataset.get_test(batch)
                     predicted_y_test = self.generator(x_test)
-                    predicted_y_test = torch.reshape(predicted_y_test, (predicted_y_test.shape[0], predicted_y_test.shape[1]))
+                    predicted_y_test = torch.reshape(
+                        predicted_y_test, (predicted_y_test.shape[0], predicted_y_test.shape[1])
+                    )
 
                     y_test = y_test.detach().cpu().numpy()
                     y_unscaled_test = y_unscaled_test.detach().cpu().numpy()
@@ -194,10 +183,16 @@ class Net:
                 else:
                     x_temp, y_temp, y_unscaled_temp = self.dataset.get_test(batch)
                     predicted_y_temp = self.generator(x_temp)
-                    predicted_y_temp = torch.reshape(predicted_y_temp, (predicted_y_temp.shape[0], predicted_y_temp.shape[1]))
+                    predicted_y_temp = torch.reshape(
+                        predicted_y_temp, (predicted_y_temp.shape[0], predicted_y_temp.shape[1])
+                    )
                     y_test = np.concatenate((y_test, y_temp.detach().cpu().numpy()))
-                    y_unscaled_test = np.concatenate((y_unscaled_test, y_unscaled_temp.detach().cpu().numpy()))
-                    predicted_y_test = np.concatenate((predicted_y_test, predicted_y_temp.detach().cpu().numpy()))
+                    y_unscaled_test = np.concatenate(
+                        (y_unscaled_test, y_unscaled_temp.detach().cpu().numpy())
+                    )
+                    predicted_y_test = np.concatenate(
+                        (predicted_y_test, predicted_y_temp.detach().cpu().numpy())
+                    )
 
         unscaled_predicted = self.dataset.inverse_transform(predicted_y_test)
 
@@ -209,7 +204,8 @@ class Net:
 
     def save(self):
         """
-        This method will save the trained model according to the dataset's code(s) and the current date
+        This method will save the trained model according to the dataset's code(s) and the
+        current date
         """
         if os.path.exists(self.generator_filepath):
             os.remove(self.generator_filepath)
@@ -226,21 +222,3 @@ class Net:
         self.generator.load_state_dict(torch.load(self.generator_filepath))
         self.discriminator = self.discriminator_copy.to(self.device)
         self.discriminator.load_state_dict(torch.load(self.discriminator_filepath))
-
-    def free_memory(self):
-        """
-        Will make some space for other programs to run on the model
-        """
-        self.optimizer_g = None
-        self.optimizer_d = None
-        self.criterion_g = None
-        self.criterion_d = None
-        self.generator = self.discriminator.to(torch.device('cpu'))
-        del self.generator
-        self.discriminator = self.discriminator.to(torch.device('cpu'))
-        del self.discriminator
-
-        gc.collect()
-        torch.cuda.empty_cache()
-
-        self.load()
