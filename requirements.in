@@ -1,7 +1,7 @@
 torch
 torchvision
 tensorboard
-tensorflow
+tensorflow>=2.7.1
 pandas
 numpy
 yahoofinancials
