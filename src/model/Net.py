@@ -117,7 +117,7 @@ class Net:
                     self.optimizer_d.step()
                     self.optimizer_d.zero_grad()
 
-                    # Train with all-fake (noise) batch
+                    # Train with all-fake batch
                     fake = self.generator(x_train)
                     output_g = fake
                     input_d = torch.cat((x_train, fake.detach()), 1)
@@ -145,15 +145,17 @@ class Net:
             d_g1 /= self.dataset.batch_div
             d_g2 /= self.dataset.batch_div
 
-            self.hist[epoch - 1] = np.array([error_d, error_g])
+            self.hist[epoch - 1] = np.array([error_g, error_d])
 
             # logging losses
-            writer.add_scalar("Error/generator", error_g, epoch)
-            writer.add_scalar("Error/discriminator", error_d, epoch)
+            writer.add_scalar("Generator Error", error_g, epoch)
+            writer.add_scalar("Discriminator Error", error_d, epoch)
+            writer.add_scalar("Discriminator True Data Average", d_x, epoch)
+            writer.add_scalar("Discriminator Fake Data Average", d_g1, epoch)
             if epoch == 1 or epoch % verbosity_interval == 0:
                 print(
                     f"Epoch {epoch}, Generator Error: {error_g}, "
-                    + f"Discriminator Error: {error_g}, Dx: {d_x}, Dg1: {d_g1}, Dg2: {d_g2}"
+                    + f"Discriminator Error: {error_d}, Dx: {d_x}, Dg1: {d_g1}, Dg2: {d_g2}"
                 )
         training_time = time.time() - start_time
         print(f"Training time: {training_time}")

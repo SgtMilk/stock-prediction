@@ -21,7 +21,7 @@ class GAN:
 
     # dataset parameters
     look_back = 100
-    pred_length = 30
+    pred_length = 30  # change this to 1 if you want to change training mode
     batch_div = 256
 
     # model parameters
@@ -33,8 +33,8 @@ class GAN:
     kernel_size = 1
 
     # training parameters
-    epochs = 1
-    learning_rate = 0.0001
+    epochs = 100
+    learning_rate = 0.001
     loss_G = MSELoss(reduction="mean")
     loss_D = BCELoss(reduction="mean")
     optimizer_G = Adam
