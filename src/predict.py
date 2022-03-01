@@ -92,5 +92,5 @@ def inverse_scaling(scaled_data, dataset):
     first_unscaling = dataset.inverse_transform(
         scaled_data.reshape((1, scaled_data.shape[0]))
     ).squeeze()
-    scaling_factor = dataset.y_unscaled.detach().cpu().numpy()[-1, 0] - first_unscaling[0]
+    scaling_factor = dataset.y_unscaled[-1, -1].item() - first_unscaling[0]
     return first_unscaling + scaling_factor

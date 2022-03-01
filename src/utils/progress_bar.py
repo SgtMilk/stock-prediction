@@ -21,5 +21,5 @@ def progress_bar(count, total, suffix=""):
     percents = round(100.0 * count / float(total), 1)
     bar_progress = "=" * filled_len + "-" * (BAR_LEN - filled_len)
 
-    sys.stdout.write(f"[{bar_progress}] {percents}%    {suffix}\r")
+    sys.stdout.write(f"[{bar_progress}] {percents}%    {suffix}         \r")
     sys.stdout.flush()

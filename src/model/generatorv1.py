@@ -8,7 +8,7 @@ import torch
 from torch.nn import Module, BatchNorm1d, LeakyReLU, GRU, Linear, Conv1d
 
 
-class Generator(Module):
+class GeneratorV1(Module):
     """
     This model is a Generator for a GAN. I added temporality with a GRU layer and then convolutional
     transpose layers.
@@ -34,7 +34,7 @@ class Generator(Module):
         :param dropout: the dropout percentage in the gru layers
         :param kernel_size: the kernel size in the convolution layers
         """
-        super(Generator, self).__init__()
+        super(GeneratorV1, self).__init__()
 
         self.output_dim = output_dim
 

@@ -34,7 +34,8 @@ class Net:
         """
         The __init__ function will set all training parameters and generate the model
         :param device: the device on which the model and data will be on (cpu vs cuda)
-        :param optimizer_g: the training optimizer for the generator
+        :param optimizer_g1: the training optimizer for the generator
+        :param optimizer_g2: the training optimizer for the generator for semi-supervised learning
         :param optimizer_d: the training optimizer for the discriminator
         :param criterion_g: the training loss function for the generator
         :param criterion_d: the training loss function for the discriminator
@@ -68,6 +69,8 @@ class Net:
         """
         The training loop for the net
         :param epochs: the number of epochs the training loop will run
+        :param semi_supervised_interval: the interval at which there will be
+                semi-supervised learning (in batches)
         :param verbosity_interval: at which epoch interval there will be logging
         """
         writer = SummaryWriter()
@@ -75,7 +78,7 @@ class Net:
         self.hist = np.zeros((epochs, 2))
         start_time = time.time()
 
-        error_g = error_d = None
+        batch_time_avg = np.array([])
 
         self.generator.train()
         self.discriminator.train()
@@ -83,79 +86,93 @@ class Net:
         for epoch in range(1, epochs + 1):
             with torch.set_grad_enabled(True):
 
-                error_g = 0
-                error_d = 0
+                log_error_g = 0
+                log_error_d = 0
 
-                d_x = 0
-                d_g1 = 0
-                d_g2 = 0
+                log_mean_d_real = 0
+                log_mean_d_fake = 0
+                log_mean_g = 0
 
                 for batch in range(self.dataset.num_train_batches):
+
+                    batch_start_time = time.time()
+
                     # getting the batch data from the dataset
                     x_train, y_train = self.dataset.get_train(batch)
 
-                    labels_size_d = y_train.size(0)
-                    real_labels = torch.full(
-                        (labels_size_d,), 0, dtype=torch.float, device=self.device
-                    )
-                    fake_labels = torch.full(
-                        (labels_size_d,), 1, dtype=torch.float, device=self.device
-                    )
+                    ###########################################################################
+                    # Update the discriminator network: maximize log(D(x)) + log(1 - D(G(z))) #
+                    ###########################################################################
 
-                    ####################################
-                    # Update the discriminator network #
-                    ####################################
-                    self.optimizer_g.zero_grad()
-                    self.optimizer_d.zero_grad()
+                    fake = self.generator(x_train)
 
                     # Train with all-real batch
-                    output_real_d = self.discriminator(torch.cat((x_train, y_train), 1)).view(-1)
-                    error_real_d = self.criterion_d(output_real_d, real_labels)
-                    error_real_d.backward()
-                    d_x += output_real_d.mean().item()
-
-                    self.optimizer_d.step()
-                    self.optimizer_d.zero_grad()
+                    disc_real = self.discriminator(torch.cat((x_train, y_train), 1)).view(-1)
+                    error_d_real = self.criterion_d(disc_real, torch.ones_like(disc_real))
+                    log_mean_d_real += disc_real.mean().item()
 
                     # Train with all-fake batch
-                    fake = self.generator(x_train)
-                    output_g = fake
-                    input_d = torch.cat((x_train, fake.detach()), 1)
-                    output_fake_d = self.discriminator(input_d).view(-1)
+                    disc_fake = self.discriminator(torch.cat((x_train, fake.detach()), 1)).view(-1)
+                    error_d_fake = self.criterion_d(disc_fake, torch.zeros_like(disc_fake))
+                    log_mean_d_fake += disc_fake.mean().item()
 
-                    error_fake_g = self.criterion_g(fake, y_train)
-                    error_fake_g.backward()
-                    error_fake_d = self.criterion_d(output_fake_d, fake_labels)
-                    error_fake_d.backward()
-                    d_g1 += output_fake_d.mean().item()
-                    d_g2 += output_g.mean().item()
+                    error_d = (error_d_real + error_d_fake) / 2
+                    log_error_d += error_d.mean().item()
 
-                    error_g += error_fake_g.item()
-                    error_d += error_real_d.item() + error_fake_d.item()
-
-                    self.optimizer_g.step()
+                    self.discriminator.zero_grad()
+                    error_d.backward()
                     self.optimizer_d.step()
 
-                    progress_bar(batch, self.dataset.batch_div, f"epoch {str(epoch)}/{str(epochs)}")
+                    #######################################################
+                    # Update the generator network: maximize log(D(G(z))) #
+                    #######################################################
+
+                    gen = self.discriminator(torch.cat((x_train, fake), 1)).view(-1)
+                    error_g = self.criterion_d(gen, torch.ones_like(gen))
+                    log_mean_g += gen.mean().item()
+                    log_error_g += error_g.mean().item()
+
+                    self.generator.zero_grad()
+                    error_g.backward()
+                    self.optimizer_g.step()
+
+                    # updating progress
+                    batch_training_time = time.time() - batch_start_time
+                    batch_time_avg = np.append(batch_time_avg, batch_training_time)
+                    total = batch_time_avg.mean() * (
+                        (epochs - epoch) * self.dataset.num_train_batches
+                        + (self.dataset.num_train_batches - batch)
+                    )
+                    hours = int(total / 3600)
+                    minutes = int((total % 3600) / 60)
+                    seconds = int(total % 60)
+                    progress_bar(
+                        batch,
+                        self.dataset.batch_div,
+                        f"epoch {str(epoch)}/{str(epochs)}, remaining time: "
+                        + f"{str(hours)}h{str(minutes)}m{str(seconds)}s",
+                    )
 
             # getting the averages
-            error_g /= self.dataset.batch_div
-            error_d /= self.dataset.batch_div
-            d_x /= self.dataset.batch_div
-            d_g1 /= self.dataset.batch_div
-            d_g2 /= self.dataset.batch_div
+            log_error_g /= self.dataset.num_train_batches
+            log_error_d /= self.dataset.num_train_batches
 
-            self.hist[epoch - 1] = np.array([error_g, error_d])
+            log_mean_d_real /= self.dataset.num_train_batches
+            log_mean_d_fake /= self.dataset.num_train_batches
+            log_mean_g /= self.dataset.num_train_batches
+
+            self.hist[epoch - 1] = np.array([log_error_g, log_error_d])
 
             # logging losses
-            writer.add_scalar("Generator Error", error_g, epoch)
-            writer.add_scalar("Discriminator Error", error_d, epoch)
-            writer.add_scalar("Discriminator True Data Average", d_x, epoch)
-            writer.add_scalar("Discriminator Fake Data Average", d_g1, epoch)
+            writer.add_scalar("Generator Error", log_error_g, epoch)
+            writer.add_scalar("Discriminator Error", log_error_d, epoch)
+            writer.add_scalar("Discriminator True Data Average", log_mean_d_real, epoch)
+            writer.add_scalar("Discriminator Fake Data Average", log_mean_d_fake, epoch)
+            writer.add_scalar("Generator average", log_mean_g, epoch)
             if epoch == 1 or epoch % verbosity_interval == 0:
                 print(
-                    f"Epoch {epoch}, Generator Error: {error_g}, "
-                    + f"Discriminator Error: {error_d}, Dx: {d_x}, Dg1: {d_g1}, Dg2: {d_g2}"
+                    f"Epoch {epoch}, Generator Error: {log_error_g}, "
+                    + f"Discriminator Error: {log_error_d}, D_real: {log_mean_d_real}, D_fake: {log_mean_d_fake}, G: {log_mean_g}"
                 )
         training_time = time.time() - start_time
         print(f"Training time: {training_time}")

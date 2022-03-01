@@ -68,6 +68,14 @@ MSE: 0.016118979081511497
 (Generated data)
 ![Discriminator Generated Data](./assets/training2/discriminator_fake.png)
 
+### Training (3) results
+
+I used another, more traditional convolutional and GRU GAN network for this, and it seemed to train well. It actually showed the underlying flaw of using GANs for stock price generation. All the outputs looked similar and did not seem to indicate where the stock was going and seemed almost unresponsive to the input. This is what I get I guess for trying to input actual data instead of noise in the GAN 🙂️.
+
+![Generator Error](./assets/training3/generator_error.png)
+![Discriminator Error](./assets/training3/discriminator_error.png)
+![Output example](./assets/training3/gan_problem.png)
+
 ### Analysis
 Even if the first training method seems better because of a lower error, that lower error could maybe be only from not having to predict over and over, is not representative of its real-world usage.  
 ![Discriminator Error](./assets/generator_error.png)

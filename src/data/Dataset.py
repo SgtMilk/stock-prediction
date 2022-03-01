@@ -177,7 +177,7 @@ class Dataset:
             [
                 np.array([x[3] for x in data_normalised[i : i + self.look_back]])
                 for i in range(
-                    len(data_normalised) - self.look_back - self.interval * self.pred_length + 1
+                    len(data_normalised) - self.look_back - self.interval * self.pred_length + 2
                 )
             ]
         )
@@ -191,7 +191,7 @@ class Dataset:
                     for j in range(self.pred_length)
                 ]
                 for i in range(
-                    len(data_normalised) - self.look_back - self.interval * self.pred_length + 1
+                    len(data_normalised) - self.look_back - self.interval * self.pred_length + 2
                 )
             ]
         )
@@ -203,7 +203,7 @@ class Dataset:
                     data[i + self.look_back + self.interval * j - 1, 3]
                     for j in range(self.pred_length)
                 ]
-                for i in range(len(data) - self.look_back - self.interval * self.pred_length + 1)
+                for i in range(len(data) - self.look_back - self.interval * self.pred_length + 2)
             ]
         )
 

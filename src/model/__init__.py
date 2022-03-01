@@ -10,6 +10,7 @@ which initializes the weights of a model.
 """
 
 from .net import Net
-from .generator import Generator
+from .generatorv1 import GeneratorV1
+from .generatorv2 import GeneratorV2
 from .discriminator import Discriminator
 from .init_weights import init_weights
