@@ -12,5 +12,6 @@ which initializes the weights of a model.
 from .net import Net
 from .generatorv1 import GeneratorV1
 from .generatorv2 import GeneratorV2
+from .generatorv3 import GeneratorV3
 from .discriminator import Discriminator
 from .init_weights import init_weights

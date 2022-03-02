@@ -39,36 +39,34 @@ To use Tensorboard alonside your training, run `tensorboard --logdir=runs` to ru
 
 The backend services included in this repo are not scalable and were not designed to be so. I would strongly advise to write your own backend services if you want to use this in a large-scale system (the database is a json file 🙂️)
 
-## Training Analysis
-I trained it in 2 modes: 
-- (1) Trained to only predict one day and then from the predicted data predict the next day and on and on.
-- (2) Did the same thing as in (1) but the for-loop prediction is on the training. This is done so that the error is calculated on multiple days.
+## Training Journal
+All following trainings were done over 150 epochs.
 
-To change training mode, change the `pred_length` parameter in the `./src/hyperparameters/ gan.py` to 1 (or 30).
+To change training mode for GeneratorV1, change the `pred_length` parameter in the `./src/hyperparameters/ gan.py` to 1 (or 30).
  
-### Training (1) results
-Training time: 15m6s  
-MSE: 0.0023658988066017628
+### Training (1) results (GeneratorV1 with `pred_length = 30`)
+Training time: 3h25m23s  
+MSE: 23702.3984375
+
+This training method gave an output of 30 from the generator, but inside, it's calling itself 30 times and predicting from data it predicted previously and real data. This generator unfortunately suffered from exploding gradients, as we can see in the output example.
 
 ![Generator Error](./assets/training1/generator_error.png)
 ![Discriminator Error](./assets/training1/discriminator_error.png)
-(Actual data)
-![Discriminator True Data](./assets/training1/discriminator_true.png)
-(Generated data)
-![Discriminator Generated Data](./assets/training1/discriminator_fake.png)
+![Output example](./assets/training1/exploding_gradients_problem.png)
 
-### Training (2) results
-Training time: 1h44m17s  
-MSE: 0.016118979081511497
+### Training (2) results (GeneratorV1 with `pred_length = 1`)
+Training time: 43m28s  
+MSE: 71499.296875
+
+This training method is similar to the previous one, but it is only predicting one number in the generator while training, but calls itself in a loop when serving predictions in eval mode. Unfortunately, this training method also suffered from exploding gradients.
 
 ![Generator Error](./assets/training2/generator_error.png)
 ![Discriminator Error](./assets/training2/discriminator_error.png)
-(Actual data)
-![Discriminator True Data](./assets/training2/discriminator_true.png)
-(Generated data)
-![Discriminator Generated Data](./assets/training2/discriminator_fake.png)
+![Output example](./assets/training2/exploding_gradients_problem.png)
 
-### Training (3) results
+### Training (3) results (GeneratorV2)
+Training time: TODO (forgot to write it down)
+MSE: TODO (forgot to write it down)
 
 I used another, more traditional convolutional and GRU GAN network for this, and it seemed to train well. It actually showed the underlying flaw of using GANs for stock price generation. All the outputs looked similar and did not seem to indicate where the stock was going and seemed almost unresponsive to the input. This is what I get I guess for trying to input actual data instead of noise in the GAN 🙂️.
 
@@ -76,12 +74,18 @@ I used another, more traditional convolutional and GRU GAN network for this, and
 ![Discriminator Error](./assets/training3/discriminator_error.png)
 ![Output example](./assets/training3/gan_problem.png)
 
+### Training (4) results (GeneratorV3)
+Training time: 54m18s  
+MSE: 0.5389038920402527
+
+I updated the previous training (classic convolutional gan) to be a modified cgan. Instead of being divided in classes like a normal cgan, I just inputted the raw past stock prices. It seemed to do exactly what a cgan does: outputs seemed to be similar in some contexts. For example, two ETFs following the S&P 500 were extremely similar, just like the GAN above. Unfortunately, I don't think it would accurately predict real outputs because it grouped some stocks in the same category such as `CL=F` and `AAPL`. Maybe a good idea would be to quantize stock ouput labels so that they would fit better in set categories.
+
+![Generator Error](./assets/training4/generator_error.png)
+![Discriminator Error](./assets/training4/discriminator_error.png)
+![Output example](./assets/training4/gan_problem.png)
+
 ### Analysis
-Even if the first training method seems better because of a lower error, that lower error could maybe be only from not having to predict over and over, is not representative of its real-world usage.  
-![Discriminator Error](./assets/generator_error.png)
-The first training method seems to have a high discriminator error, which can be seen as a good sign in this case: the discriminator is unable to distinguish the generated data from the actual data. Again, this might just be because it only has one thing to predict.
-![UI Screenshot](./assets/discriminator_error.png)
-Both training methods could be used here: the first method statistically gives better results, but the second method is more representative of real-world usage, so it might give better predictions.
+I may be doing something wrong hahahaha
 
 ## Copyright
 

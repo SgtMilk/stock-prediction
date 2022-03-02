@@ -38,7 +38,7 @@ def train_stock(codes, interval: int) -> None:
     # getting our models and net
     generator = GAN.generator(
         GAN.device,
-        dataset.x_data.shape[-1],
+        dataset.x_data.shape[-2],
         GAN.hidden_dim,
         dataset.y_data.shape[-2],
         GAN.num_dim,

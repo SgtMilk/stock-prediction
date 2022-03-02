@@ -148,7 +148,7 @@ class Net:
                     seconds = int(total % 60)
                     progress_bar(
                         batch,
-                        self.dataset.batch_div,
+                        self.dataset.num_train_batches,
                         f"epoch {str(epoch)}/{str(epochs)}, remaining time: "
                         + f"{str(hours)}h{str(minutes)}m{str(seconds)}s",
                     )
