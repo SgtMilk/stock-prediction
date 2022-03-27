@@ -83,6 +83,9 @@ class Net:
         self.generator.train()
         self.discriminator.train()
 
+        semi_supervised_interval = 100
+        semi_supervised_times = int(self.dataset.num_train_batches / semi_supervised_interval)
+
         for epoch in range(1, epochs + 1):
             with torch.set_grad_enabled(True):
 
@@ -108,12 +111,12 @@ class Net:
 
                     # Train with all-real batch
                     disc_real = self.discriminator(torch.cat((x_train, y_train), 1)).view(-1)
-                    error_d_real = self.criterion_d(disc_real, torch.ones_like(disc_real))
+                    error_d_real = self.criterion_d(disc_real, torch.zeros_like(disc_real))
                     log_mean_d_real += disc_real.mean().item()
 
                     # Train with all-fake batch
                     disc_fake = self.discriminator(torch.cat((x_train, fake.detach()), 1)).view(-1)
-                    error_d_fake = self.criterion_d(disc_fake, torch.zeros_like(disc_fake))
+                    error_d_fake = self.criterion_d(disc_fake, torch.ones_like(disc_fake))
                     log_mean_d_fake += disc_fake.mean().item()
 
                     error_d = (error_d_real + error_d_fake) / 2
@@ -123,18 +126,25 @@ class Net:
                     error_d.backward()
                     self.optimizer_d.step()
 
-                    #######################################################
-                    # Update the generator network: maximize log(D(G(z))) #
-                    #######################################################
+                    if batch % semi_supervised_interval == 0:
+                        error_g = self.criterion_g(fake, y_train)
 
-                    gen = self.discriminator(torch.cat((x_train, fake), 1)).view(-1)
-                    error_g = self.criterion_d(gen, torch.ones_like(gen))
-                    log_mean_g += gen.mean().item()
-                    log_error_g += error_g.mean().item()
+                        self.generator.zero_grad()
+                        error_g.backward()
+                        self.optimizer_g.step()
+                    else:
+                        #######################################################
+                        # Update the generator network: maximize log(D(G(z))) #
+                        #######################################################
 
-                    self.generator.zero_grad()
-                    error_g.backward()
-                    self.optimizer_g.step()
+                        gen = self.discriminator(torch.cat((x_train, fake), 1)).view(-1)
+                        error_g = self.criterion_d(gen, torch.zeros_like(gen))
+                        log_mean_g += gen.mean().item()
+                        log_error_g += error_g.mean().item()
+
+                        self.generator.zero_grad()
+                        error_g.backward()
+                        self.optimizer_g.step()
 
                     # updating progress
                     batch_training_time = time.time() - batch_start_time
@@ -154,12 +164,14 @@ class Net:
                     )
 
             # getting the averages
-            log_error_g /= self.dataset.num_train_batches
-            log_error_d /= self.dataset.num_train_batches
+            avg_divisor = self.dataset.num_train_batches - semi_supervised_times
 
-            log_mean_d_real /= self.dataset.num_train_batches
-            log_mean_d_fake /= self.dataset.num_train_batches
-            log_mean_g /= self.dataset.num_train_batches
+            log_error_g /= avg_divisor
+            log_error_d /= avg_divisor
+
+            log_mean_d_real /= avg_divisor
+            log_mean_d_fake /= avg_divisor
+            log_mean_g /= avg_divisor
 
             self.hist[epoch - 1] = np.array([log_error_g, log_error_d])
 

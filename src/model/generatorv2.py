@@ -5,15 +5,7 @@ Contains the Generator class, the generator model for the GAN.
 """
 
 import torch
-from torch.nn import (
-    Module,
-    BatchNorm1d,
-    GRU,
-    Linear,
-    Sequential,
-    ConvTranspose1d,
-    ReLU,
-)
+from torch.nn import Module, BatchNorm1d, GRU, Linear, Sequential, ConvTranspose1d, LeakyReLU, Tanh
 
 
 class GeneratorV2(Module):
@@ -49,8 +41,9 @@ class GeneratorV2(Module):
         self.conv = Sequential(
             ConvTranspose1d(hidden_dim * 2, hidden_dim, kernel_size, bias=False),
             BatchNorm1d(hidden_dim),
-            ReLU(True),
+            LeakyReLU(True),
             ConvTranspose1d(hidden_dim, output_dim, kernel_size, bias=False),
+            Tanh,
         )
 
         self.gru = GRU(

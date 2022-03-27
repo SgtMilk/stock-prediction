@@ -5,7 +5,7 @@ Contains the Generator class, the generator model for the GAN.
 """
 
 import torch
-from torch.nn import Module, BatchNorm1d, LeakyReLU, GRU, Linear, Conv1d
+from torch.nn import Module, BatchNorm1d, LeakyReLU, GRU, Linear, Conv1d, Tanh
 
 
 class GeneratorV1(Module):
@@ -52,6 +52,8 @@ class GeneratorV1(Module):
 
         self.linear = Linear(hidden_dim, 1)
 
+        self.tanh = Tanh()
+
         self.num_layers = num_layers
         self.hidden_dim = hidden_dim
         self.device = device
@@ -89,5 +91,6 @@ class GeneratorV1(Module):
         )
         output, (_) = self.gru(output.permute(0, 2, 1), noise)
         output = self.linear(output[:, -1])
+        output = self.tanh(output)
 
         return output

@@ -7,7 +7,7 @@ This module contains the GAN class, a collection of hyperparameters to train the
 from torch.nn import MSELoss, BCELoss
 from torch.optim import Adam
 import torch
-from src.model import GeneratorV1, Discriminator
+from src.model import GeneratorV3, Discriminator
 
 
 class GAN:
@@ -25,7 +25,7 @@ class GAN:
     batch_div = 1024
 
     # model parameters
-    generator = GeneratorV1
+    generator = GeneratorV3
     discriminator = Discriminator
     hidden_dim = 128
     num_dim = 2
@@ -33,7 +33,7 @@ class GAN:
     kernel_size = 1
 
     # training parameters
-    epochs = 150
+    epochs = 50
     learning_rate = 0.001
     loss_G = MSELoss(reduction="mean")
     loss_D = BCELoss(reduction="mean")
