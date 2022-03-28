@@ -36,10 +36,7 @@ def predict_stock(code, pred_length: int):
 
     # getting our model and net
     generator = GAN.generator(
-        GAN.device,
-        GAN.hidden_dim,
-        GAN.num_dim,
-        GAN.dropout,
+        GAN.device, GAN.hidden_dim, GAN.num_dim, GAN.dropout, noise_proportion=GAN.noise_proportion
     )
 
     generator.to(device=GAN.device)

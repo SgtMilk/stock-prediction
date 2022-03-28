@@ -36,6 +36,7 @@ def train_stock(codes) -> None:
         hidden_dim=GAN.hidden_dim,
         num_layers=GAN.num_dim,
         dropout=GAN.dropout,
+        noise_proportion=GAN.noise_proportion,
     )
     optimizer_g = GAN.optimizer_G(generator.parameters(), lr=GAN.learning_rate, betas=(0.5, 0.999))
     generator.apply(init_weights)

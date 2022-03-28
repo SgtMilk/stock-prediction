@@ -4,6 +4,7 @@
 Contains the Generator class, the generator model for the RNN GAN.
 """
 
+from matplotlib.pyplot import axis
 import torch
 from torch.nn import Module, GRU, Linear, ReLU
 
@@ -19,6 +20,7 @@ class GeneratorRNN(Module):
         hidden_dim: int,
         num_layers: int,
         dropout: float,
+        noise_proportion: float,
     ):
         """
         Initializes the Generator model.
@@ -28,6 +30,8 @@ class GeneratorRNN(Module):
         :param dropout: the dropout percentage in the gru layers
         """
         super(GeneratorRNN, self).__init__()
+
+        self.input_len = int(1 / (1 - noise_proportion)) + 1
 
         self.gru = GRU(
             input_size=1,
@@ -53,7 +57,15 @@ class GeneratorRNN(Module):
         :return the predicted data, the hidden state
         """
 
-        output, hidden = self.gru(input_data, hidden)
+        noise_gru = (
+            torch.randn(input_data.shape[0], self.input_len - 1, 1)
+            .requires_grad_()
+            .to(device=self.device)
+        )
+
+        output = torch.cat((input_data, noise_gru), axis=1)
+
+        output, hidden = self.gru(output, hidden)
         output = self.relu(output[:, -1])
         output = self.linear(output)
 

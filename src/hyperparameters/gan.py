@@ -30,7 +30,7 @@ class GAN:
     hidden_dim = 128
     num_dim = 2
     dropout = 0.2
-    kernel_size = 1
+    noise_proportion = 0.95  # Will change determinism of GAN outputs
 
     # training parameters
     epochs = 150

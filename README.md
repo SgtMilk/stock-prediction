@@ -72,7 +72,7 @@ I used another, more traditional convolutional and GRU GAN network for this, and
 ![Discriminator Error](./assets/training3/discriminator_error.png)
 ![Output example](./assets/training3/gan_problem.png)
 
-### Training (4) results (GeneratorV3)
+### Training (4) results (GeneratorV3) -- iteration2 branch
 Training time: 54m18s  
 MSE: 0.5389038920402527
 
@@ -94,8 +94,15 @@ Attached research: https://arxiv.org/pdf/1611.09904.pdf
 ![Discriminator Error](./assets/training5/discriminator_error.png)
 ![Output example](./assets/training5/gan_problem.png)
 
-### Training (6) results (one-to-many RNN)
-(to-do)
+### Training (6) results (RNN C-GAN) -- iteration3 branch
+Training time: 42m35s  
+MSE per stock lifetime: 318.65036752531785  
+
+I added some noise to the input to add variability, just by curiosity. The same GAN problem persisted.
+
+![Generator Error](./assets/training6/generator_error.png)
+![Discriminator Error](./assets/training6/discriminator_error.png)
+![Output example](./assets/training6/gan_problem.png)
 
 ## Copyright
 
