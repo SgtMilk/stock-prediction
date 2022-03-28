@@ -11,6 +11,6 @@ It also contains helpers such as:
 - Interval (acts as enum)
 """
 
-from .dataset import Dataset, Interval
+from .Dataset import Dataset
 from .aggregate_dataset import AggregateDataset
 from .get_stock_symbols import get_stock_symbols

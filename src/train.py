@@ -11,12 +11,11 @@ from src.model import Net, init_weights
 from src.utils import Colors
 
 
-def train_stock(codes, interval: int) -> None:
+def train_stock(codes) -> None:
     """
     Trains a stock prediction model with a downloaded array of stock prices.
     You can adjust the hyperparameters of the training in `./hyperparameters/gan.py`.
     :param codes: array of stock codes
-    :param interval: Interval.daily, Interval.weekly, Interval.monthly
     """
 
     if torch.cuda.is_available() is False:
@@ -27,35 +26,27 @@ def train_stock(codes, interval: int) -> None:
     dataset = AggregateDataset(
         GAN.device,
         codes,
-        interval=interval,
-        look_back=GAN.look_back,
-        pred_length=GAN.pred_length,
         y_flag=True,
         no_download=GAN.no_download,
-        batch_div=GAN.batch_div,
     )
 
     # getting our models and net
     generator = GAN.generator(
-        GAN.device,
-        dataset.x_data.shape[-2],
-        GAN.hidden_dim,
-        dataset.y_data.shape[-2],
-        GAN.num_dim,
-        GAN.dropout,
-        GAN.kernel_size,
+        device=GAN.device,
+        hidden_dim=GAN.hidden_dim,
+        num_layers=GAN.num_dim,
+        dropout=GAN.dropout,
     )
     optimizer_g = GAN.optimizer_G(generator.parameters(), lr=GAN.learning_rate, betas=(0.5, 0.999))
     generator.apply(init_weights)
 
     discriminator = GAN.discriminator(
-        GAN.device,
-        GAN.look_back + GAN.pred_length,
-        GAN.hidden_dim,
-        GAN.num_dim,
-        GAN.dropout,
-        GAN.kernel_size,
+        device=GAN.device,
+        hidden_dim=GAN.hidden_dim,
+        num_layers=GAN.num_dim,
+        dropout=GAN.dropout,
     )
+
     optimizer_d = GAN.optimizer_D(
         discriminator.parameters(), lr=GAN.learning_rate, betas=(0.5, 0.999)
     )

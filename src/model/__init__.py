@@ -9,9 +9,10 @@ It also contains the Net class, which will train the models, as well as the init
 which initializes the weights of a model.
 """
 
-from .net import Net
+from .Net import Net
 from .generatorv1 import GeneratorV1
 from .generatorv2 import GeneratorV2
 from .generatorv3 import GeneratorV3
-from .discriminator import Discriminator
+from .discriminator_rnn import DiscriminatorRNN
+from .generator_rnn import GeneratorRNN
 from .init_weights import init_weights

@@ -58,12 +58,8 @@ class Net:
         # getting the right file name
         destination_folder = os.path.abspath(get_base_path() + "src/model/models")
 
-        self.generator_filepath = os.path.join(
-            destination_folder, f"generator-{dataset.interval}.hdf5"
-        )
-        self.discriminator_filepath = os.path.join(
-            destination_folder, f"discriminator-{dataset.interval}.hdf5"
-        )
+        self.generator_filepath = os.path.join(destination_folder, "generator.hdf5")
+        self.discriminator_filepath = os.path.join(destination_folder, "discriminator.hdf5")
 
     def train(self, epochs: int, verbosity_interval: int = 1):
         """
@@ -91,10 +87,10 @@ class Net:
 
                 log_error_g = 0
                 log_error_d = 0
-
-                log_mean_d_real = 0
-                log_mean_d_fake = 0
                 log_mean_g = 0
+
+                hidden_g = self.generator.init_hidden(self.dataset.x_train.shape[1])
+                hidden_d = self.discriminator.init_hidden(self.dataset.x_train.shape[1])
 
                 for batch in range(self.dataset.num_train_batches):
 
@@ -107,44 +103,69 @@ class Net:
                     # Update the discriminator network: maximize log(D(x)) + log(1 - D(G(z))) #
                     ###########################################################################
 
-                    fake = self.generator(x_train)
+                    fake, hidden_g = self.generator(
+                        x_train.reshape(x_train.shape[0], 1, 1), hidden_g.detach()
+                    )
 
-                    # Train with all-real batch
-                    disc_real = self.discriminator(torch.cat((x_train, y_train), 1)).view(-1)
-                    error_d_real = self.criterion_d(disc_real, torch.zeros_like(disc_real))
-                    log_mean_d_real += disc_real.mean().item()
+                    split = int(y_train.shape[0] * 0.5)
 
-                    # Train with all-fake batch
-                    disc_fake = self.discriminator(torch.cat((x_train, fake.detach()), 1)).view(-1)
-                    error_d_fake = self.criterion_d(disc_fake, torch.ones_like(disc_fake))
-                    log_mean_d_fake += disc_fake.mean().item()
+                    # Train
+                    hidden_d_copy = torch.clone(hidden_d.detach())
+                    input_temp = None
+                    if batch % 2 == 0:
+                        input_temp = torch.cat(
+                            (
+                                y_train.reshape(y_train.shape[0], 1, 1)[:split],
+                                fake.detach().reshape(fake.shape[0], 1, 1)[split:],
+                            )
+                        )
+                    else:
+                        input_temp = torch.cat(
+                            (
+                                fake.detach().reshape(fake.shape[0], 1, 1)[:split],
+                                y_train.reshape(y_train.shape[0], 1, 1)[split:],
+                            )
+                        )
 
-                    error_d = (error_d_real + error_d_fake) / 2
+                    disc, hidden_d = self.discriminator(
+                        input_temp,
+                        hidden_d.detach(),
+                    )
+
+                    if batch % 2 == 0:
+                        input_temp = torch.cat(
+                            (
+                                torch.zeros_like(disc[:split]),
+                                torch.ones_like(disc[split:]),
+                            )
+                        )
+                    else:
+                        input_temp = torch.cat(
+                            (
+                                torch.ones_like(disc[split:]),
+                                torch.zeros_like(disc[:split]),
+                            )
+                        )
+
+                    error_d = self.criterion_d(disc, input_temp)
                     log_error_d += error_d.mean().item()
 
                     self.discriminator.zero_grad()
                     error_d.backward()
                     self.optimizer_d.step()
 
-                    if batch % semi_supervised_interval == 0:
-                        error_g = self.criterion_g(fake, y_train)
+                    #######################################################
+                    # Update the generator network: maximize log(D(G(z))) #
+                    #######################################################
 
-                        self.generator.zero_grad()
-                        error_g.backward()
-                        self.optimizer_g.step()
-                    else:
-                        #######################################################
-                        # Update the generator network: maximize log(D(G(z))) #
-                        #######################################################
+                    gen, _ = self.discriminator(fake.reshape(fake.shape[0], 1, 1), hidden_d_copy)
+                    error_g = self.criterion_d(gen, torch.zeros_like(gen))
+                    log_mean_g += gen.mean().item()
+                    log_error_g += error_g.mean().item()
 
-                        gen = self.discriminator(torch.cat((x_train, fake), 1)).view(-1)
-                        error_g = self.criterion_d(gen, torch.zeros_like(gen))
-                        log_mean_g += gen.mean().item()
-                        log_error_g += error_g.mean().item()
-
-                        self.generator.zero_grad()
-                        error_g.backward()
-                        self.optimizer_g.step()
+                    self.generator.zero_grad()
+                    error_g.backward()
+                    self.optimizer_g.step()
 
                     # updating progress
                     batch_training_time = time.time() - batch_start_time
@@ -168,9 +189,6 @@ class Net:
 
             log_error_g /= avg_divisor
             log_error_d /= avg_divisor
-
-            log_mean_d_real /= avg_divisor
-            log_mean_d_fake /= avg_divisor
             log_mean_g /= avg_divisor
 
             self.hist[epoch - 1] = np.array([log_error_g, log_error_d])
@@ -178,13 +196,11 @@ class Net:
             # logging losses
             writer.add_scalar("Generator Error", log_error_g, epoch)
             writer.add_scalar("Discriminator Error", log_error_d, epoch)
-            writer.add_scalar("Discriminator True Data Average", log_mean_d_real, epoch)
-            writer.add_scalar("Discriminator Fake Data Average", log_mean_d_fake, epoch)
             writer.add_scalar("Generator average", log_mean_g, epoch)
             if epoch == 1 or epoch % verbosity_interval == 0:
                 print(
                     f"Epoch {epoch}, Generator Error: {log_error_g}, "
-                    + f"Discriminator Error: {log_error_d}, D_real: {log_mean_d_real}, D_fake: {log_mean_d_fake}, G: {log_mean_g}"
+                    + f"Discriminator Error: {log_error_d}, G: {log_mean_g}"
                 )
         training_time = time.time() - start_time
         print(f"Training time: {training_time}")
@@ -198,40 +214,26 @@ class Net:
         self.generator.eval()
         self.discriminator.eval()
 
-        predicted_y_test = y_test = y_unscaled_test = None
-        with torch.set_grad_enabled(False):
+        scaled_mse = 0
+        with torch.set_grad_enabled(True):
+
+            hidden_g = self.generator.init_hidden(self.dataset.x_test.shape[1])
+
             for batch in range(self.dataset.num_test_batches):
-                if batch == 0:
-                    x_test, y_test, y_unscaled_test = self.dataset.get_test(batch)
-                    predicted_y_test = self.generator(x_test)
-                    predicted_y_test = torch.reshape(
-                        predicted_y_test, (predicted_y_test.shape[0], predicted_y_test.shape[1])
-                    )
 
-                    y_test = y_test.detach().cpu().numpy()
-                    y_unscaled_test = y_unscaled_test.detach().cpu().numpy()
-                    predicted_y_test = predicted_y_test.detach().cpu().numpy()
-                else:
-                    x_temp, y_temp, y_unscaled_temp = self.dataset.get_test(batch)
-                    predicted_y_temp = self.generator(x_temp)
-                    predicted_y_temp = torch.reshape(
-                        predicted_y_temp, (predicted_y_temp.shape[0], predicted_y_temp.shape[1])
-                    )
-                    y_test = np.concatenate((y_test, y_temp.detach().cpu().numpy()))
-                    y_unscaled_test = np.concatenate(
-                        (y_unscaled_test, y_unscaled_temp.detach().cpu().numpy())
-                    )
-                    predicted_y_test = np.concatenate(
-                        (predicted_y_test, predicted_y_temp.detach().cpu().numpy())
-                    )
+                # getting the batch data from the dataset
+                x_test, y_unscaled_test = self.dataset.get_test(batch)
 
-        unscaled_predicted = self.dataset.inverse_transform(predicted_y_test)
+                output, hidden_g = self.generator(
+                    x_test.reshape(x_test.shape[0], 1, 1), hidden_g.detach()
+                )
 
-        assert predicted_y_test.shape == unscaled_predicted.shape
-        assert predicted_y_test.shape == y_unscaled_test.shape
+                scaled_mse += mean_squared_error(
+                    output.squeeze().detach().cpu().numpy(),
+                    y_unscaled_test.squeeze().detach().cpu().numpy(),
+                )
 
-        scaled_mse = mean_squared_error(np.squeeze(y_test), predicted_y_test)
-        print(f"scaled_mse_y: {scaled_mse}")
+        print(f"scaled_mse_y: {scaled_mse/self.dataset.num_test_batches}")
 
     def save(self):
         """

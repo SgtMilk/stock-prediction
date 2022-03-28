@@ -15,16 +15,6 @@ import numpy as np
 from src.utils import Colors, get_base_path
 
 
-class Interval:
-    """
-    Enum equivalent for interval choices
-    """
-
-    daily = 1
-    weekly = 5
-    monthly = 22
-
-
 class Dataset:
     """Collects data for a stock and organizes it in training or predicting format"""
 
@@ -32,9 +22,6 @@ class Dataset:
         self,
         device,
         code: str,
-        interval: int,
-        look_back: int = 100,
-        pred_length: int = 30,
         y_flag: bool = False,
         no_download=False,
     ) -> None:
@@ -43,17 +30,11 @@ class Dataset:
         It also downloads the dataset from the past 5 years and stocks it in ./source
         :param device: the device to train on (cpu vs cuda)
         :param code: the stock's code
-        :param interval: the interval in days between predictions
-        :param look_back: the number of days back the x data will be formatted to
-        :param pred_length: the number of predicted days format
         :param y_flag: defaults to false, will not ask if you want to overwrite older files
         :param no_download: default to false, will not download any stock data if True
         """
         self.device = device
         self.code = code
-        self.interval = interval
-        self.look_back = look_back
-        self.pred_length = pred_length
 
         # downloading data and putting it in a .csv file
         if not no_download:
@@ -166,46 +147,19 @@ class Dataset:
         del data["date"]
         del data["formatted_date"]
 
-        data = np.array(data)
+        data = np.array(data)[:, 3]
 
         # scaling
         scaler = MinMaxScaler()
-        data_normalised = scaler.fit_transform(data)
+        data_normalised = scaler.fit_transform(np.expand_dims(data, axis=1)).squeeze()
 
         # array of arrays of the last 50 day's data
-        x_data = np.array(
-            [
-                np.array([x[3] for x in data_normalised[i : i + self.look_back]])
-                for i in range(
-                    len(data_normalised) - self.look_back - self.interval * self.pred_length + 2
-                )
-            ]
-        )
-        x_data = np.expand_dims(x_data, axis=2)
+        x_data = np.array(data_normalised[:-1])
 
         # resulting array of closing prices normalized
-        y_data = np.array(
-            [
-                [
-                    np.array([data_normalised[i + self.look_back + self.interval * j - 1, 3]])
-                    for j in range(self.pred_length)
-                ]
-                for i in range(
-                    len(data_normalised) - self.look_back - self.interval * self.pred_length + 2
-                )
-            ]
-        )
-
+        y_data = np.array(data_normalised[1:])
         # resulting array of closing prices unscaled
-        y_data_unscaled = np.array(
-            [
-                [
-                    data[i + self.look_back + self.interval * j - 1, 3]
-                    for j in range(self.pred_length)
-                ]
-                for i in range(len(data) - self.look_back - self.interval * self.pred_length + 2)
-            ]
-        )
+        y_data_unscaled = np.array(data[1:])
 
         assert x_data.shape[0] == y_data.shape[0]
         assert y_data.shape[0] == y_data_unscaled.shape[0]
@@ -213,25 +167,22 @@ class Dataset:
             return None
 
         normalizer = MinMaxScaler()
-        normalizer.fit(y_data_unscaled)
+        normalizer.fit(np.expand_dims(y_data_unscaled, axis=1))
 
         # setting class variables
-        self.x_data = []
-        self.y_data = []
-        self.y_unscaled = []
         self.normalizer = normalizer
 
         # removing all NaN values
-        for i in range(x_data.shape[0]):
-            if (
-                np.isnan(np.sum(x_data[i].flatten()))
-                or np.isnan(np.sum(y_data[i].flatten()))
-                or np.isnan(np.sum(y_data_unscaled[i].flatten()))
-            ):
-                continue
-            self.x_data.append(x_data[i])
-            self.y_data.append(y_data[i])
-            self.y_unscaled.append(y_data_unscaled[i])
+        if (
+            np.isnan(np.sum(x_data.flatten()))
+            or np.isnan(np.sum(y_data.flatten()))
+            or np.isnan(np.sum(y_data_unscaled.flatten()))
+        ):
+            return None
+        else:
+            self.x_data = x_data
+            self.y_data = y_data
+            self.y_unscaled = y_data_unscaled
 
         self.x_data = np.array(self.x_data)
         self.y_data = np.array(self.y_data)

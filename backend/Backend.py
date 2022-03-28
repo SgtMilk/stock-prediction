@@ -60,7 +60,7 @@ class Backend:
                 print("number of days too big")
                 abort(400)
 
-            data = predict_stock(code, interval, num_days)
+            data = predict_stock(code, num_days)
             if data is None:
                 print("cannot predict data")
                 abort(400)
@@ -71,7 +71,7 @@ class Backend:
 
             # getting dates
             nyse = mcal.get_calendar("NYSE")
-            num_days_dates = len(data) * 4 * interval
+            num_days_dates = len(data) * 4
             if num_days_dates < 6:
                 num_days_dates = 6
             current_date = datetime.date.today() + datetime.timedelta(days=1)

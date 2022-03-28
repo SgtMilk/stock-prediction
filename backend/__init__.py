@@ -4,4 +4,4 @@
 This module contains the Backend class.
 """
 
-from .backend import Backend
+from .Backend import Backend
