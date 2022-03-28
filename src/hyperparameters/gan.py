@@ -33,7 +33,7 @@ class GAN:
     kernel_size = 1
 
     # training parameters
-    epochs = 50
+    epochs = 150
     learning_rate = 0.001
     loss_G = MSELoss(reduction="mean")
     loss_D = BCELoss(reduction="mean")

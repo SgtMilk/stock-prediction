@@ -41,8 +41,6 @@ The backend services included in this repo are not scalable and were not designe
 
 ## Training Journal
 All following trainings were done over 150 epochs.
-
-To change training mode for GeneratorV1, change the `pred_length` parameter in the `./src/hyperparameters/ gan.py` to 1 (or 30).
  
 ### Training (1) results (GeneratorV1 with `pred_length = 30`)
 Training time: 3h25m23s  
@@ -84,8 +82,20 @@ I updated the previous training (classic convolutional gan) to be a modified cga
 ![Discriminator Error](./assets/training4/discriminator_error.png)
 ![Output example](./assets/training4/gan_problem.png)
 
-### Analysis
-I may be doing something wrong hahahaha
+### Training (5) results (RNN GAN)
+Training time: 10m56s  
+MSE per stock lifetime: 323.52637683953446
+
+I properly learned about different types of RNNs recently, so I decided to implement a GAN RNN. The results seemed a lot better than previous models, but the results seemed a bit too deterministic. I did not put any noise, because I wanted the output to be deterministic, but all output progressed in a similar fashion, which is unwanted. Even by adding some noise to make it more like a traditional GAN, I don't think it is having the behavior that I want for stock prediction. I will have to remove the adversarial training in future iterations, but it was a good learning experience.
+
+Attached research: https://arxiv.org/pdf/1611.09904.pdf
+
+![Generator Error](./assets/training5/generator_error.png)
+![Discriminator Error](./assets/training5/discriminator_error.png)
+![Output example](./assets/training5/gan_problem.png)
+
+### Training (6) results (one-to-many RNN)
+(to-do)
 
 ## Copyright
 
