@@ -24,7 +24,7 @@ def predict_stock(code, pred_length: int):
     """
     # getting the right file path
     destination_folder = os.path.abspath(os.path.join(get_base_path(), "src/model/models"))
-    filepath = os.path.join(destination_folder, "generator.hdf5")
+    filepath = os.path.join(destination_folder, "model.hdf5")
 
     # getting the data
     dataset = Dataset(
@@ -35,16 +35,14 @@ def predict_stock(code, pred_length: int):
     dataset.transform_to_torch()
 
     # getting our model and net
-    generator = GAN.generator(
-        GAN.device, GAN.hidden_dim, GAN.num_dim, GAN.dropout, noise_proportion=GAN.noise_proportion
-    )
+    model = GAN.model(GAN.device, GAN.hidden_dim, GAN.num_dim, GAN.dropout)
 
-    generator.to(device=GAN.device)
+    model.to(device=GAN.device)
 
     if not os.path.exists(filepath):
         return None
 
-    generator.load_state_dict(torch.load(filepath))
+    model.load_state_dict(torch.load(filepath))
 
     data = (
         torch.from_numpy(np.array(dataset.x_data.detach().cpu().numpy()))
@@ -53,15 +51,15 @@ def predict_stock(code, pred_length: int):
     )[-GAN.look_back :]
 
     # getting the predicted prices
-    generator.eval()
+    model.eval()
     returned_data = None
 
     with torch.set_grad_enabled(False):
-        hidden = generator.init_hidden(1)
+        hidden = model.init_hidden(1)
         for price in data:
-            _, hidden = generator(expand_dims(price), hidden)
+            _, hidden = model(price, hidden)
         for _ in range(pred_length):
-            output, hidden = generator(expand_dims(data[-1]), hidden)
+            output, hidden = model(data[-1], hidden)
             torch.cat((data, torch.tensor([output.squeeze()]).to(GAN.device)))
 
     # re-transforming to numpy
@@ -79,8 +77,3 @@ def inverse_scaling(scaled_data, dataset):
     ).squeeze()
     scaling_factor = dataset.y_unscaled[-1].item() - first_unscaling[0]
     return first_unscaling + scaling_factor
-
-
-def expand_dims(value):
-    """expands the dims for the generator"""
-    return torch.unsqueeze(torch.unsqueeze(torch.tensor([value]), axis=1), axis=2).to(GAN.device)

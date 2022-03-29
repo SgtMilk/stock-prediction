@@ -36,18 +36,23 @@ class Dataset:
         self.device = device
         self.code = code
 
-        # downloading data and putting it in a .csv file
-        if not no_download:
-            data = self.download_data(y_flag=y_flag)
-        else:
-            data = None
-
         # initializing variables
         self.x_data = self.y_data = self.y_unscaled = self.normalizer = None
 
+        # downloading data and putting it in a .csv file
+        if not no_download:
+            print(code)
+            data = self.download_data(y_flag=y_flag)
+            if data is None:
+                return
+            if data == 0:
+                data = None
+        else:
+            data = None
+
         self.build_dataset(data)
 
-    def download_data(self, y_flag: bool = False):
+    def download_data(self, y_flag: bool = True):
         """
         download_data downloads all the data from the past 5 years from that stock code
         and puts it in .csv files
@@ -74,7 +79,8 @@ class Dataset:
 
         destination = os.path.join(destination_folder, self.code + ".csv")
         if y_flag and os.path.exists(destination):
-            os.remove(destination)
+            # os.remove(destination)
+            return 0
 
         if not y_flag and os.path.exists(destination):
             response = input(
@@ -89,18 +95,17 @@ class Dataset:
             else:
                 return None
 
-        current_stock = YahooFinancials(self.code)
-
         current_date = datetime.date.today()
         initial_date = current_date - datetime.timedelta(days=365.24 * 20)
         try:
+            current_stock = YahooFinancials(self.code)
             data = current_stock.get_historical_price_data(
                 start_date=str(initial_date), end_date=str(current_date), time_interval="daily"
             )
-        except OSError:
-            raise NameError(
-                f"\nCould not download data for {self.code} (it probably doesn't exist"
-            ) from OSError
+            if "prices" not in data[self.code]:
+                return None
+        except (RuntimeError, TypeError, NameError):
+            return None
 
         prices = data[self.code]["prices"]
 

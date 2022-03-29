@@ -7,7 +7,7 @@ Contains the train_stock function for training a model.
 import torch
 from src.data import AggregateDataset
 from src.hyperparameters import GAN
-from src.model import Net, init_weights
+from src.model import Net
 from src.utils import Colors
 
 
@@ -28,44 +28,27 @@ def train_stock(codes) -> None:
         codes,
         y_flag=True,
         no_download=GAN.no_download,
+        validation_split=GAN.validation_split,
     )
 
     # getting our models and net
-    generator = GAN.generator(
-        device=GAN.device,
-        hidden_dim=GAN.hidden_dim,
-        num_layers=GAN.num_dim,
-        dropout=GAN.dropout,
-        noise_proportion=GAN.noise_proportion,
-    )
-    optimizer_g = GAN.optimizer_G(generator.parameters(), lr=GAN.learning_rate, betas=(0.5, 0.999))
-    generator.apply(init_weights)
-
-    discriminator = GAN.discriminator(
+    model = GAN.model(
         device=GAN.device,
         hidden_dim=GAN.hidden_dim,
         num_layers=GAN.num_dim,
         dropout=GAN.dropout,
     )
-
-    optimizer_d = GAN.optimizer_D(
-        discriminator.parameters(), lr=GAN.learning_rate, betas=(0.5, 0.999)
-    )
-    discriminator.apply(init_weights)
+    optimizer = GAN.optimizer(model.parameters(), lr=GAN.learning_rate, betas=(0.5, 0.999))
 
     net = Net(
         GAN.device,
-        optimizer_g,
-        optimizer_d,
-        GAN.loss_G,
-        GAN.loss_D,
-        generator,
-        discriminator,
+        optimizer,
+        GAN.loss,
+        model,
         dataset,
     )
 
     # training and evaluating our model
     net.train(GAN.epochs, verbosity_interval=5)
-    net.save()
 
     net.evaluate()

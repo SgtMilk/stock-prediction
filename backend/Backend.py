@@ -56,10 +56,6 @@ class Backend:
             :return: the prediction data
             """
 
-            if num_days > 30:
-                print("number of days too big")
-                abort(400)
-
             data = predict_stock(code, num_days)
             if data is None:
                 print("cannot predict data")
@@ -83,7 +79,7 @@ class Backend:
             for index, price in enumerate(data[1:]):
                 returned_data.append(
                     {
-                        "date": str(open_days[((index + 1) * interval) - 1]).split()[0],
+                        "date": str(open_days[((index + 1)) - 1]).split()[0],
                         "price": price,
                     }
                 )

@@ -16,3 +16,4 @@ from .generatorv3 import GeneratorV3
 from .discriminator_rnn import DiscriminatorRNN
 from .generator_rnn import GeneratorRNN
 from .init_weights import init_weights
+from .rnn import RNN

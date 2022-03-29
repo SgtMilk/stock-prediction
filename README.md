@@ -2,7 +2,7 @@
 
 This repository is trying to generate estimates of future stock value.
 Yes, I know it is impossible to get accurate future values of the stock market. If you use this, I am not liable for any losses of money. 
-The prediction uses a PyTorch convolution/GRU GAN model.
+I used this to learn about different types of models and in which conditions they perform well, as you can see below in the training journal.
 
 ## Front-end
 You can find a front-end user interface at this github repo: https://github.com/SgtMilk/stock-prediction-frontend 
@@ -103,6 +103,16 @@ I added some noise to the input to add variability, just by curiosity. The same 
 ![Generator Error](./assets/training6/generator_error.png)
 ![Discriminator Error](./assets/training6/discriminator_error.png)
 ![Output example](./assets/training6/gan_problem.png)
+
+### Training (7) results (RNN) -- main branch
+Training time: 1h26m6s
+MSE per stock lifetime: 22191.953253799486
+
+I made the dataset five times bigger and dropped the adversarial training. I think I am seeing some better results. The MSE is higher, but I think that is caused by the bigger dataset.
+
+![Training Error](./assets/training7/training_error.png)
+![Validation Error](./assets/training7/validation_error.png)
+![Output example](./assets/training7/output_example.png)
 
 ## Copyright
 
