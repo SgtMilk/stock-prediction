@@ -52,22 +52,17 @@ def predict_stock(code, pred_length: int):
 
     # getting the predicted prices
     model.eval()
-    returned_data = None
+
+    prediction = [data[-1]]
 
     with torch.set_grad_enabled(False):
         hidden = model.init_hidden(1)
-        for price in data:
+        for price in data[:-1]:
             _, hidden = model(price, hidden)
         for _ in range(pred_length):
-            output, hidden = model(data[-1], hidden)
-            torch.cat((data, torch.tensor([output.squeeze()]).to(GAN.device)))
-
-    # re-transforming to numpy
-    predicted = data[-(pred_length + 1) :].detach().cpu().numpy().squeeze()
-
-    returned_data = inverse_scaling(predicted, dataset)
-
-    return returned_data
+            output, hidden = model(prediction[-1], hidden)
+            prediction.append(output.squeeze())
+    return [x.item() for x in prediction]
 
 
 def inverse_scaling(scaled_data, dataset):

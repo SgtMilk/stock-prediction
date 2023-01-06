@@ -189,7 +189,7 @@ class Net:
             for batch in range(self.dataset.num_test_batches):
 
                 # getting the batch data from the dataset
-                x_test, y_unscaled_test = self.dataset.get_test(batch)
+                x_test, y_test = self.dataset.get_test(batch)
 
                 output, hidden_g = self.model(
                     x_test.reshape(x_test.shape[0], 1, 1), hidden_g.detach()
@@ -197,7 +197,7 @@ class Net:
 
                 scaled_mse += mean_squared_error(
                     output.squeeze().detach().cpu().numpy(),
-                    y_unscaled_test.squeeze().detach().cpu().numpy(),
+                    y_test.squeeze().detach().cpu().numpy(),
                 )
 
         print(f"scaled_mse_y: {scaled_mse/self.dataset.num_test_batches}")

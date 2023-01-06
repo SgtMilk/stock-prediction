@@ -7,6 +7,7 @@ Contains the AggregateDataset class, a class for training the model
 from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.nn.utils.rnn import pad_sequence
+import numpy as np
 from src.utils import progress_bar
 from src.data import Dataset
 
@@ -40,9 +41,9 @@ class AggregateDataset:
         self.validation_split = validation_split
         self.test_split = test_split
         self.datasets = []
-        self.x_data = []
-        self.y_data = []
-        self.y_unscaled = []
+        x_data = []
+        y_data = []
+        limit = 5000
 
         for i, code in enumerate(codes):
             dataset = Dataset(
@@ -53,45 +54,38 @@ class AggregateDataset:
             )
             if dataset is None:
                 continue
-            if dataset.x_data is None or dataset.y_data is None or dataset.y_unscaled is None:
+            if dataset.x_data is None or dataset.y_data is None:
                 continue
-            if dataset.x_data.ndim != 1 or dataset.y_data.ndim != 1 or dataset.y_unscaled.ndim != 1:
+            if dataset.x_data.ndim != 1 or dataset.y_data.ndim != 1:
                 continue
-
+            if dataset.x_data.shape[0] < limit:
+                continue
             self.datasets.append(dataset)
 
-            self.x_data.append(torch.from_numpy(dataset.x_data))
-            self.y_data.append(torch.from_numpy(dataset.y_data))
-            self.y_unscaled.append(torch.from_numpy(dataset.y_unscaled))
+            x_data.append(dataset.x_data.tolist()[:limit])
+            y_data.append(dataset.y_data.tolist()[:limit])
 
             progress_bar(i + 1, len(codes), suffix="building the dataset...")
 
-        # padding the sequences
-        self.x_data = pad_sequence(self.x_data).float()
-        self.y_data = pad_sequence(self.y_data).float()
-        self.y_unscaled = pad_sequence(self.y_unscaled).float()
-
-        self.normalizer = MinMaxScaler()
-        self.normalizer.fit(self.y_unscaled.numpy())
+        self.x_data = torch.tensor(x_data).float()
+        print(self.x_data.shape[0] * self.x_data.shape[1])
+        self.y_data = torch.tensor(y_data).float()
 
         # finding the right split
         v_split = int(self.x_data.shape[0] * (1 - self.validation_split - self.test_split))
         t_split = int(self.x_data.shape[0] * (1 - self.test_split))
 
-        self.x_train, self.y_train, self.y_unscaled_train = (
+        self.x_train, self.y_train = (
             self.x_data[:v_split].permute((1, 0)),
             self.y_data[:v_split].permute((1, 0)),
-            self.y_unscaled[:v_split].permute((1, 0)),
         )
-        self.x_validation, self.y_validation, self.y_unscaled_validation = (
+        self.x_validation, self.y_validation = (
             self.x_data[v_split:t_split].permute((1, 0)),
             self.y_data[v_split:t_split].permute((1, 0)),
-            self.y_unscaled[v_split:t_split].permute((1, 0)),
         )
-        self.x_test, self.y_test, self.y_unscaled_test = (
+        self.x_test, self.y_test = (
             self.x_data[t_split:].permute((1, 0)),
             self.y_data[t_split:].permute((1, 0)),
-            self.y_unscaled[t_split:].permute((1, 0)),
         )
 
         self.num_train_batches = self.x_train.shape[0]
@@ -129,13 +123,5 @@ class AggregateDataset:
         """
         return (
             self.x_test[index].to(device=self.device),
-            self.y_unscaled_test[index].to(device=self.device),
+            self.y_test[index].to(device=self.device),
         )
-
-    def inverse_transform(self, y_data):
-        """
-        Transforms back the data into unscaled data
-        :param y_data: the data to turn back in unscaled
-        :return: the scaled data
-        """
-        return self.normalizer.inverse_transform(y_data)

@@ -9,7 +9,6 @@ import datetime
 import csv
 import torch
 from yahoofinancials import YahooFinancials
-from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 import numpy as np
 from src.utils import Colors, get_base_path
@@ -37,7 +36,7 @@ class Dataset:
         self.code = code
 
         # initializing variables
-        self.x_data = self.y_data = self.y_unscaled = self.normalizer = None
+        self.x_data = self.y_data = None
 
         # downloading data and putting it in a .csv file
         if not no_download:
@@ -79,8 +78,7 @@ class Dataset:
 
         destination = os.path.join(destination_folder, self.code + ".csv")
         if y_flag and os.path.exists(destination):
-            # os.remove(destination)
-            return 0
+            os.remove(destination)
 
         if not y_flag and os.path.exists(destination):
             response = input(
@@ -154,54 +152,24 @@ class Dataset:
 
         data = np.array(data)[:, 3]
 
-        # scaling
-        scaler = MinMaxScaler()
-        data_normalised = scaler.fit_transform(np.expand_dims(data, axis=1)).squeeze()
-
         # array of arrays of the last 50 day's data
-        x_data = np.array(data_normalised[:-1])
+        x_data = np.array(data[:-1])
 
         # resulting array of closing prices normalized
-        y_data = np.array(data_normalised[1:])
-        # resulting array of closing prices unscaled
-        y_data_unscaled = np.array(data[1:])
+        y_data = np.array(data[1:])
 
         assert x_data.shape[0] == y_data.shape[0]
-        assert y_data.shape[0] == y_data_unscaled.shape[0]
         if y_data.size == 0:
             return None
 
-        normalizer = MinMaxScaler()
-        normalizer.fit(np.expand_dims(y_data_unscaled, axis=1))
-
-        # setting class variables
-        self.normalizer = normalizer
-
         # removing all NaN values
-        if (
-            np.isnan(np.sum(x_data.flatten()))
-            or np.isnan(np.sum(y_data.flatten()))
-            or np.isnan(np.sum(y_data_unscaled.flatten()))
-        ):
+        if np.isnan(np.sum(x_data.flatten())) or np.isnan(np.sum(y_data.flatten())):
             return None
         else:
-            self.x_data = x_data
-            self.y_data = y_data
-            self.y_unscaled = y_data_unscaled
+            self.x_data = np.array(x_data)
+            self.y_data = np.array(y_data)
 
-        self.x_data = np.array(self.x_data)
-        self.y_data = np.array(self.y_data)
-        self.y_unscaled = np.array(self.y_unscaled)
-
-        return self.x_data, self.y_data, self.y_unscaled, self.normalizer
-
-    def inverse_transform(self, y_data):
-        """
-        Transforms back the data into unscaled data
-        :param y_data: the data to turn back in unscaled
-        :return: the scaled data
-        """
-        return self.normalizer.inverse_transform(y_data)
+        return self.x_data, self.y_data
 
     def transform_to_torch(self):
         """
@@ -212,6 +180,3 @@ class Dataset:
 
         if not torch.is_tensor(self.y_data) and self.y_data is not None:
             self.y_data = torch.from_numpy(self.y_data).float().to(device=self.device)
-
-        if not torch.is_tensor(self.y_unscaled) and self.y_unscaled is not None:
-            self.y_unscaled = torch.from_numpy(self.y_unscaled).float().to(device=self.device)

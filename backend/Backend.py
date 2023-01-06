@@ -60,7 +60,6 @@ class Backend:
             if data is None:
                 print("cannot predict data")
                 abort(400)
-            data = data.squeeze().tolist()
             returned_data = []
             if not isinstance(data, list):
                 data = [data]
